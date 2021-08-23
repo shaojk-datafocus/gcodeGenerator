@@ -34,10 +34,10 @@ def approximate(path, start, end, start_point, end_point, max_error, depth, max_
     linear_length = abs(end_point - start_point)
     # Worst case deviation given a fixed linear_length and actual_length would probably be 
     # a symmetric tent shape (I haven't proved it -- TODO).
-    deviationSquared = (actual_length/2)**2 - (linear_length/2)**2
-    if deviationSquared <= max_error ** 2:
+    deviationSquared = (actual_length/2)**2 - (linear_length/2)**2 # 这里应该是个微分概念
+    if deviationSquared <= max_error ** 2: # 如果曲线距离与直线距离误差已经很小了，那么就返回直线点
         return [start_point, end_point]
-    else:
+    else: # 否则继续区中递归
         mid = (start+end)/2.
         mid_point = path.point(mid)
         return ( approximate(path, start, mid, start_point, mid_point, max_error, depth+1, max_depth)[:-1] + 
@@ -48,7 +48,7 @@ def removeCollinear(points, error, pointsToKeep=set()):
     
     lengths = [0]
 
-    for i in range(1,len(points)):
+    for i in range(1,len(points)): # 获取所有两点之间的长度
         lengths.append(lengths[-1] + abs(points[i]-points[i-1]))
         
     def length(a,b):
@@ -517,15 +517,14 @@ class Path(MutableSequence):
         
     def linearApproximation(self, error=0.001, max_depth=32):
         closed = False
-        keepSegmentIndex = 0
-        if self.closed:
+        keepSegmentIndex = 0 # 一般该值就是0
+        if self.closed: #
             end = self[-1].end
             for i,segment in enumerate(self):
                 if segment.start == end:
                     keepSegmentIndex = i
                     closed = True
                     break
-        
         keepSubpathIndex = 0
         keepPointIndex = 0
 
@@ -533,6 +532,7 @@ class Path(MutableSequence):
         subpath = []
         prevEnd = None
         for i,segment in enumerate(self._segments):
+            print(segment)
             if prevEnd is None or segment.start == prevEnd:
                 if i == keepSegmentIndex:
                     keepSubpathIndex = len(subpaths)
@@ -540,25 +540,24 @@ class Path(MutableSequence):
             else:
                 subpaths.append(subpath)
                 subpath = []
-            subpath += segment.getApproximatePoints(error=error/2., max_depth=max_depth)
+            subpath += segment.getApproximatePoints(error=error/2., max_depth=max_depth) # 把曲线细分成一段一段的细小直线段
             prevEnd = segment.end
-                
         if len(subpath) > 0:
             subpaths.append(subpath)
-            
+        # subpaths 包含了多条被直线分解的路径点，实际就一条路径
         linearPath = Path(svgState=self.svgState)
         
         for i,subpath in enumerate(subpaths):
-            keep = set((keepPointIndex,)) if i == keepSubpathIndex else set() 
+            keep = set((keepPointIndex,)) if i == keepSubpathIndex else set()
+            # keep = {0}
             special = None
             if i == keepSubpathIndex:
                 special = subpath[keepPointIndex]
             points = removeCollinear(subpath, error=error/2., pointsToKeep=keep)
-#            points = subpath
-            
+            # 移除共线，计算各个线的偏差，把小于偏差的线段合成同一条线段
+
             for j in range(len(points)-1):
-                linearPath.append(Line(points[j], points[j+1]))
-        
+                linearPath.append(Line(points[j], points[j+1])) #将路径点转换成Line对象
         linearPath.closed = self.closed and linearPath._is_closable()
         linearPath.svgState = self.svgState
 

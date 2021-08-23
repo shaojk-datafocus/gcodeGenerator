@@ -74,12 +74,14 @@ class Plotter(object):
         self.formulas = {'right':str(self.xyMax[0]), 'top':str(self.xyMax[1]), 'up':'work+lift', 'park':'work+safe', 'centerx':'(left+right)/2.', 'centery':'(top+bottom)/2.'}
 
 def processCode(code):
+    print("这里发生了？？")
+    print(plotter)
     if not code:
         return []
 
     data = []
     pattern = r'\{\{([^}]+)\}\}'
-    
+
     data = tuple( evaluate(expr, plotter.variables, plotter.formulas) for expr in re.findall(pattern, code))
 
         
@@ -88,6 +90,8 @@ def processCode(code):
     return [formatString % data]
         
 def gcodeHeader(plotter):
+    print("这里发生了？？")
+    print(plotter)
     return processCode(plotter.initCode)
 
 def isSameColor(rgb1, rgb2):
@@ -362,8 +366,9 @@ def emitGcode(data, pens = {}, plotter=Plotter(), scalingMode=SCALE_NONE, align 
 
     if align is not None:
         scale.align(plotter, xyMin, xyMax, align)
-
     if not simulation:
+        print("这里发生了？？")
+        print(simulation)
         gcode = gcodeHeader(plotter)
     else:
         gcode = []
@@ -951,6 +956,7 @@ if __name__ == '__main__':
                 quiet = True # Inkscape
             elif opt == "--tool-mode":
                 toolMode = arg
+                print('toolMode',toolMode, arg)
             elif opt in ('e', '--direction'):
                 if len(arg.strip()) == 0 or arg == 'none':
                     directionAngle = None
@@ -1085,28 +1091,32 @@ if __name__ == '__main__':
     if svgTree is None and 'PD' not in data and 'PU' not in data:
         sys.stderr.write("Unrecognized file.\n")
         exit(1)
-
     shader.setDrawingDirectionAngle(directionAngle)
     if svgTree is not None:
+        print("parseSVG")
         penData = parseSVG(svgTree, tolerance=tolerance, shader=shader, strokeAll=strokeAll, pens=pens, extractColor=extractColor)
     else:
         penData = parseHPGL(data, dpi=dpi)
     penData = removePenBob(penData)
 
     if doDedup:
+        print("doDedup")
         penData = dedup(penData)
 
     if sortPaths:
+        print("sortPaths")
         for pen in penData:
             penData[pen] = safeSorted(penData[pen], comparison=comparePaths)
         penData = removePenBob(penData)
 
     if optimizationTime > 0. and directionAngle is None:
+        print("optimizationTime")
         for pen in penData:
             penData[pen] = anneal.optimize(penData[pen], timeout=optimizationTime/2., quiet=quiet)
         penData = removePenBob(penData)
 
     if toolOffset > 0. or overcut > 0.:
+        print("OffsetProcess")
         if scalingMode != SCALE_NONE:
             sys.stderr.write("Scaling with tool-offset > 0 will produce unpredictable results.\n")
         op = OffsetProcessor(toolOffset=toolOffset, overcut=overcut, tolerance=tolerance)
@@ -1114,6 +1124,7 @@ if __name__ == '__main__':
             penData[pen] = op.processPath(penData[pen])
 
     if directionAngle is not None:
+        print("directionalize")
         for pen in penData:
             penData[pen] = directionalize(penData[pen], directionAngle)
         penData = removePenBob(penData)
@@ -1123,12 +1134,17 @@ if __name__ == '__main__':
         for pen in sorted(penData):
             sys.stderr.write(describePen(pens, pen)+"\n")
 
+    print(penData)
+
     if hpglOut and not svgSimulation:
+        print("emitHPGL")
         g = emitHPGL(penData, pens=pens)
     else:
+        print("emitGcode")
         g = emitGcode(penData, align=align, scalingMode=scalingMode, tolerance=tolerance,
                 plotter=plotter, gcodePause=gcodePause, pens=pens, pauseAtStart=pauseAtStart, simulation=svgSimulation)
-
+    print(g)
+    sys.exit(1)
     if g:
         dump = True
 

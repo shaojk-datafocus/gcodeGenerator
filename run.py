@@ -36,6 +36,12 @@ shader.angle = config.drawing.shadingAngle
 shader.crossHatch = config.drawing.booleanShadingCrosshatch
 shader.setDrawingDirectionAngle(config.drawing.direction)
 
+def parseData(penData):
+    for path in penData:
+        for point in path:
+            print("%f, %f"%point)
+        print()
+
 # 读取数据
 with open(config.SVG_PATH) as f:
     data = f.read()
@@ -50,25 +56,18 @@ penData = parseSVG(svgTree,
                    strokeAll=config.strokeAll,
                    pens=pens,
                    extractColor=rgbFromColor(config.fitting.extractColor))
+penData = removePenBob(penData) # 合并同起点终点的路径
 
-penData = removePenBob(penData)
-
-op = OffsetProcessor(toolOffset=config.cutting.toolOffset, overcut=config.cutting.overcut, tolerance=config.general.tolerance)
-for pen in penData:
-    penData[pen] = op.processPath(penData[pen])
+# penData = dedup(penData) # 这个什么也没变
 
 for pen in penData:
     penData[pen] = directionalize(penData[pen], config.drawing.direction)
 penData = removePenBob(penData)
 
-print(len(penData))
-
 align = [0,0]
 scalingMode = 0 # SCALE_NONE
 gcodePause = '@pause'
-pauseAtStart = False
-svgSimulation = False
 g = emitGcode(penData, align=align, scalingMode=scalingMode, tolerance=config.general.tolerance,
-                plotter=plotter, gcodePause=gcodePause, pens=pens, pauseAtStart=pauseAtStart, simulation=svgSimulation)
-
-print(g)
+                plotter=plotter, gcodePause=gcodePause, pens=pens)
+# for row in g:
+#     print(row)

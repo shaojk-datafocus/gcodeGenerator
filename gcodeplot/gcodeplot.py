@@ -74,11 +74,10 @@ class Plotter(object):
             'bottom':self.xyMin[1], 'zspeed':self.zSpeed, 'movespeed':self.moveSpeed}
         self.formulas = {'right':str(self.xyMax[0]), 'top':str(self.xyMax[1]), 'up':'work+lift', 'park':'work+safe', 'centerx':'(left+right)/2.', 'centery':'(top+bottom)/2.'}
 
-def processCode(code):
+def processCode(code, plotter):
     if not code:
         return []
 
-    data = []
     pattern = r'\{\{([^}]+)\}\}'
     
     data = tuple( evaluate(expr, plotter.variables, plotter.formulas) for expr in re.findall(pattern, code))
@@ -89,7 +88,7 @@ def processCode(code):
     return [formatString % data]
         
 def gcodeHeader(plotter):
-    return processCode(plotter.initCode)
+    return processCode(plotter.initCode, plotter)
 
 def isSameColor(rgb1, rgb2):
     if rgb1 is None or rgb2 is None:
@@ -377,7 +376,7 @@ def emitGcode(data, pens = {}, plotter=Plotter(), scalingMode=SCALE_NONE, align 
         if not simulation:
             lift = plotter.safeLiftCommand or plotter.liftCommand
             if lift:
-                gcode.extend(processCode(lift))
+                gcode.extend(processCode(lift, plotter))
             else:
                 gcode.append('G00 F%.1f Z%.3f; pen park !!Zpark' % (plotter.zSpeed*60., plotter.safeUpZ))
 
@@ -402,7 +401,7 @@ def emitGcode(data, pens = {}, plotter=Plotter(), scalingMode=SCALE_NONE, align 
         if state.curZ is None or state.curZ not in (plotter.safeUpZ, plotter.penUpZ) or force:
             if not simulation:
                 if plotter.liftCommand:
-                    gcode.extend(processCode(plotter.liftCommand))
+                    gcode.extend(processCode(plotter.liftCommand, plotter))
                 else:
                     gcode.append('G00 F%.1f Z%.3f; pen up !!Zup' % (plotter.zSpeed*60., plotter.penUpZ))
             if state.curZ is not None:
@@ -413,7 +412,7 @@ def emitGcode(data, pens = {}, plotter=Plotter(), scalingMode=SCALE_NONE, align 
         if state.curZ is None or state.curZ != plotter.workZ or force:
             if not simulation:
                 if plotter.downCommand:
-                    gcode.extend(processCode(plotter.downCommand))
+                    gcode.extend(processCode(plotter.downCommand, plotter))
                 else:
                     gcode.append('G00 F%.1f Z%.3f; pen down !!Zwork' % (plotter.zSpeed*60., plotter.workZ))
             state.time += abs(state.curZ-plotter.workZ) / plotter.zSpeed
@@ -484,8 +483,8 @@ def emitGcode(data, pens = {}, plotter=Plotter(), scalingMode=SCALE_NONE, align 
     if simulation:
         gcode.append('</svg>')
     else:
-        gcode.extend(processCode(plotter.endCode))
-
+        gcode.extend(processCode(plotter.endCode, plotter))
+    quiet = False
     if not quiet:
         sys.stderr.write('Estimated printing time: %dm %.1fs\n' % (state.time // 60, state.time % 60))
         sys.stderr.flush()
@@ -584,23 +583,22 @@ def parseSVG(svgTree, tolerance=0.05, shader=None, strokeAll=False, pens=None, e
         lines = []
 
         stroke = strokeAll or (path.svgState.stroke is not None and (extractColor is None or isSameColor(path.svgState.stroke, extractColor)))
-
+        # stroke = True
         strokePen = getPen(pens, path.svgState.stroke)
-
+        # strokenPen = 1
         if strokePen not in data:
             data[strokePen] = []
-
-        for line in path.linearApproximation(error=tolerance):
+        for line in path.linearApproximation(error=tolerance): # 返回一个Path对象，里面是经过直线化和共线合并处理的Line对象
             if stroke:
                 data[strokePen].append([(line.start.real,line.start.imag),(line.end.real,line.end.imag)])
-            lines.append((line.start, line.end))
+            lines.append((line.start, line.end)) # lines又存储成了线段的端点组
         if not data[strokePen]:
             del data[strokePen]
 
         if shader is not None and shader.isActive() and path.svgState.fill is not None and (extractColor is None or
                 isSameColor(path.svgState.fill, extractColor)):
             pen = getPen(pens, path.svgState.fill)
-
+            print("这里执行了")
             if pen not in data:
                 data[pen] = []
 
