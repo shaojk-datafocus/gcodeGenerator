@@ -21,7 +21,23 @@
 #             print(page)
 #         else:
 #             print("%s.%s"%(page,e['name']))
-from gcodeplot.svgpath.path import approximate
 
 
-points = approximate(self, 0., 1., self.point(0.), self.point(1.), error, 0, max_depth)
+# a = complex(1,1)
+#
+# print(a)
+# b = complex(0.5,0.5)
+#
+# print(a+b)
+# print(a-b)
+# print(a*b)
+# print(a/b)
+import math
+angleDegrees = 45
+# rotate = complex(math.cos(angleDegrees * math.pi / 180.), math.sin(angleDegrees * math.pi / 180.))
+rotate = 1+1j
+print(rotate)
+line = ((1+1j), (0+1j), (1+0j))
+print(*line)
+print(line[0]/rotate,line[1]/rotate,line[2]/rotate)
+print(line[0]*rotate,line[1]*rotate,line[2]*rotate)

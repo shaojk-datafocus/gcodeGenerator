@@ -595,21 +595,25 @@ def parseSVG(svgTree, tolerance=0.05, shader=None, strokeAll=False, pens=None, e
         if not data[strokePen]:
             del data[strokePen]
 
+        # 需要svg的path的fill属性不为空，并且指定的提取颜色与填充颜色一致才会执行Shader操作
         if shader is not None and shader.isActive() and path.svgState.fill is not None and (extractColor is None or
                 isSameColor(path.svgState.fill, extractColor)):
             pen = getPen(pens, path.svgState.fill)
-            print("这里执行了")
             if pen not in data:
                 data[pen] = []
 
-            grayscale = sum(path.svgState.fill) / 3.
+            grayscale = sum(path.svgState.fill) / 3. # 计算灰度，灰度相当于图片的亮度图
             mode = Shader.MODE_NONZERO if path.svgState.fillRule == 'nonzero' else Shader.MODE_EVEN_ODD
-            if path.svgState.fillOpacity is not None:
+            # mode = 1 # nonzero
+            if path.svgState.fillOpacity is not None: # fillOpacity是None
                 grayscale = grayscale * path.svgState.fillOpacity + 1. - path.svgState.fillOpacity # TODO: real alpha!
+            # avoidOutline 是False
+            # lines是直线化处理后线段的端点组列表
             fillLines = shader.shade(lines, grayscale, avoidOutline=(path.svgState.stroke is None or strokePen != pen), mode=mode)
+            # fillLines 是填充线
             for line in fillLines:
                 data[pen].append([(line[0].real,line[0].imag),(line[1].real,line[1].imag)])
-
+            # 仅保留填充线？原先的轮廓线不管了？
             if not data[pen]:
                 del data[pen]
 
