@@ -78,10 +78,10 @@ def processCode(code, plotter):
     if not code:
         return []
 
-    pattern = r'\{\{([^}]+)\}\}'
+    pattern = r'\{\{([^}]+)\}\}' # 获取{{ }}的标识，
     
     data = tuple( evaluate(expr, plotter.variables, plotter.formulas) for expr in re.findall(pattern, code))
-
+    # evaluate是将命令中一些规定的语句转换成具体数值
         
     formatString = re.sub(pattern, '', code.replace('|', '\n'))
     
@@ -332,22 +332,24 @@ def penColor(pens, pen):
 def emitGcode(data, pens = {}, plotter=Plotter(), scalingMode=SCALE_NONE, align = None, tolerance=0, gcodePause="@pause", pauseAtStart = False, simulation = False):
     if len(data) == 0:
         return None
-
+    # data 笔的字典， 值是所有线段的数组，每个线段是两个点数据，每个点数据是XY轴坐标的元组
+    # [[(13.0, 283.0), (14.0, 284.0)], ...]
     xyMin = [float("inf"),float("inf")]
     xyMax = [float("-inf"),float("-inf")]
 
     allFit = True
 
     scale = Scale()
-    scale.offset = (plotter.xyMin[0],plotter.xyMin[1])
+    # scale的scale控制缩放
+    scale.offset = (plotter.xyMin[0],plotter.xyMin[1]) # scale放入plotter的范围 XY均0~300
 
-    for pen in data:
-        for segment in data[pen]:
-            for point in segment:
-                if not plotter.inRange(scale.scalePoint(point)):
+    for pen in data: # 遍历每个笔
+        for segment in data[pen]: # 遍历每个线段
+            for point in segment: # 遍历每个点，就两个点
+                if not plotter.inRange(scale.scalePoint(point)): # 判断点是否在plotter的画图范围内
                     allFit = False
                 for i in range(2):
-                    xyMin[i] = min(xyMin[i], point[i])
+                    xyMin[i] = min(xyMin[i], point[i]) # 记录图形的最大最小范围
                     xyMax[i] = max(xyMax[i], point[i])
 
     if scalingMode == SCALE_NONE:
@@ -373,6 +375,7 @@ def emitGcode(data, pens = {}, plotter=Plotter(), scalingMode=SCALE_NONE, align 
             
             
     def park():
+        """停止，抬笔"""
         if not simulation:
             lift = plotter.safeLiftCommand or plotter.liftCommand
             if lift:
@@ -381,7 +384,7 @@ def emitGcode(data, pens = {}, plotter=Plotter(), scalingMode=SCALE_NONE, align 
                 gcode.append('G00 F%.1f Z%.3f; pen park !!Zpark' % (plotter.zSpeed*60., plotter.safeUpZ))
 
     park()
-    if not simulation:
+    if not simulation: # 移动到原点
         gcode.append('G00 F%.1f Y%.3f; !!Ybottom' % (plotter.moveSpeed*60.,   plotter.xyMin[1]))
         gcode.append('G00 F%.1f X%.3f; !!Xleft' % (plotter.moveSpeed*60.,   plotter.xyMin[0]))
 
@@ -392,9 +395,10 @@ def emitGcode(data, pens = {}, plotter=Plotter(), scalingMode=SCALE_NONE, align 
     state.time = (plotter.xyMin[1]+plotter.xyMin[0]) / plotter.moveSpeed
     state.curXY = plotter.xyMin
     state.curZ = plotter.safeUpZ
-    state.penColor = (0.,0.,0.)
+    state.penColor = (0.,0.,0.) # penColor仅在模拟的情况下才会使用，用作svg的fill属性
 
     def distance(a,b):
+        """计算两点的欧几里得距离"""
         return math.hypot(a[0]-b[0],a[1]-b[1])
 
     def penUp(force=False):
@@ -453,7 +457,7 @@ def emitGcode(data, pens = {}, plotter=Plotter(), scalingMode=SCALE_NONE, align 
                 state.time += d / speed
             state.curXY = p
 
-    for pen in sorted(data):
+    for pen in sorted(data): # 遍历每个笔
         if pen != 1:
             state.curZ = None
             state.curXY = None
@@ -467,7 +471,7 @@ def emitGcode(data, pens = {}, plotter=Plotter(), scalingMode=SCALE_NONE, align 
 
         newPen = True
 
-        for segment in data[pen]:
+        for segment in data[pen]: # 遍历每个线段
             penMove(False, plotter.moveSpeed, s.scalePoint(segment[0]))
 
             if newPen and (pen != 1 or pauseAtStart) and not simulation:

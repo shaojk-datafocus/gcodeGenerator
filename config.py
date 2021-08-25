@@ -3,7 +3,7 @@
 # @Author  : ShaoJK
 # @File    : config.py.py
 # @Remark  :
-from utils import Dict
+from core.utils import Dict
 
 
 general = Dict()

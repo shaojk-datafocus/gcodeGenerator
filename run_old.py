@@ -7,11 +7,10 @@ import sys
 
 import config
 import xml.etree.ElementTree as ET
+from gcodeplot.gcodeplot import Plotter, Pen, parseSVG, removePenBob, dedup, directionalize, describePen, emitGcode
+from gcodeplot.svgpath.parser import rgbFromColor
+from gcodeplot.svgpath.shader import Shader
 
-from core.model import Plotter, Pen
-from core.parser import parseSVG, rgbFromColor
-from core.process import removePenBob, dedup
-from core.shader import Shader
 from gcodeplot.gcodeplotutils.processoffset import OffsetProcessor
 
 shader = Shader()

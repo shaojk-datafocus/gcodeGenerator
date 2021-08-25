@@ -32,12 +32,19 @@
 # print(a-b)
 # print(a*b)
 # print(a/b)
-import math
-angleDegrees = 45
-# rotate = complex(math.cos(angleDegrees * math.pi / 180.), math.sin(angleDegrees * math.pi / 180.))
-rotate = 1+1j
-print(rotate)
-line = ((1+1j), (0+1j), (1+0j))
-print(*line)
-print(line[0]/rotate,line[1]/rotate,line[2]/rotate)
-print(line[0]*rotate,line[1]*rotate,line[2]*rotate)
+
+import re
+
+
+code = ["G00 S1; endstops|",
+       "G00 E0; no extrusion|",
+       "G01 S1; endstops|",
+       "G01 E0; no extrusion|",
+       "G21; millimeters|",
+       "G91 G0 F%.1f{{zspeed*60}} Z%.3f{{safe}}; pen park !!Zsafe|",
+       "G90; absolute|",
+       "G28 X; home|",
+       "G28 Y; home|",
+       "G28 Z; home"]
+for c in code:
+    print(re.findall(r'\{\{([^}]+)\}\}',c))
