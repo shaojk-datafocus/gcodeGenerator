@@ -8,7 +8,8 @@ import sys
 import config
 import xml.etree.ElementTree as ET
 
-from core.model import Plotter, Pen
+from core.gcode import emitGcode
+from core.plot import Plotter, Pen
 from core.parser import parseSVG, rgbFromColor
 from core.process import removePenBob, dedup
 from core.shader import Shader
@@ -67,8 +68,11 @@ penData = dedup(penData) # 这个什么也没变
 align = [0,0]
 scalingMode = 0 # SCALE_NONE
 gcodePause = '@pause'
-g = emitGcode(penData, align=align, scalingMode=scalingMode, tolerance=config.general.tolerance,
+gcode = emitGcode(penData, align=align, scalingMode=scalingMode, tolerance=config.general.tolerance,
                 plotter=plotter, gcodePause=gcodePause, pens=pens)
+
+for g in gcode:
+    print(g)
 # with open("output.gcode", "w") as f:
 #     for row in g:
 #         f.write(row+"\n")

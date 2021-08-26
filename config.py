@@ -3,10 +3,9 @@
 # @Author  : ShaoJK
 # @File    : config.py.py
 # @Remark  :
-from core.utils import Dict
+from easydict import EasyDict
 
-
-general = Dict()
+general = EasyDict()
 general.toolMode = 'draw'
 general.tolerance = 0.05 # float
 general.minX = 0
@@ -22,13 +21,13 @@ general.zSpeed = 5
 general.sendAndSave = ''
 general.sendSpeed = 115200
 
-fitting = Dict()
+fitting = EasyDict()
 fitting.scale = 'none'
 fitting.alignX = 'none'
 fitting.alignY = 'none'
 fitting.extractColor = 'black' # string 16进制rgb
 
-drawing = Dict()
+drawing = EasyDict()
 drawing.shadingThreshold = 1
 drawing.shadingLightest = 3
 drawing.shadingDarkest = 0.5
@@ -37,7 +36,7 @@ drawing.booleanShadingCrosshatch = 0
 drawing.optimizationTime = 60
 drawing.direction = 45
 
-cutting = Dict()
+cutting = EasyDict()
 cutting.toolOffset = 0
 cutting.overcut = 1
 cutting.booleanSort = 1
