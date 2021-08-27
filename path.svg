@@ -2,14 +2,13 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="200mm"
-   height="200mm"
-   viewBox="0 0 200 200"
+   width="210mm"
+   height="297mm"
+   viewBox="0 0 210 297"
    version="1.1"
    id="svg5"
-   preserveAspectRatio="none"
    inkscape:version="1.1 (c68e22c387, 2021-05-23)"
-   sodipodi:docname="test.svg"
+   sodipodi:docname="绘图.svg"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -39,13 +38,9 @@
      inkscape:label="图层 1"
      inkscape:groupmode="layer"
      id="layer1">
-<!--    <path-->
-<!--       style="fill:#000000;stroke:#000000;s1troke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"-->
-<!--       d="m 13.015936,12.227092 43.780876,0.394422 c 0,0 17.354582,33.525896 0,33.525896 -17.354581,0 -43.780876,-0.394422 -43.780876,-0.394422 z"-->
-<!--       id="path66" />-->
     <path
-       style="fill:#000000;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       d="m 10,10 0,110 110,0 0,-110 z"
-       id="path66" />
+       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 21.693227,32.737052 81.645413,0.394422 v 82.828686 l -82.82868,-5.12749 0.394422,-74.151395 77.306773,0.394422 -1.183267,72.968123 -69.418326,-3.5498 1.577689,-67.446212 62.318724,3.944224 -59.95219,60.741038 7.494023,-57.58566 46.541833,57.98008 c 0,0 -29.581673,0.39442 -29.581673,-1.18327 0,-1.57769 7.494024,-57.191232 7.494024,-57.191232 L 88.745019,74.545816 42.203187,74.151394 65.079681,97.027888 86.772908,81.645418 51.669322,47.330677"
+       id="path42" />
   </g>
 </svg>

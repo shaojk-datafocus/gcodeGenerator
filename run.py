@@ -17,7 +17,6 @@ from gcodeplot.gcodeplotutils.processoffset import OffsetProcessor
 
 shader = Shader()
 plotter = Plotter()
-pens = {1: Pen('1 (0.,0.) black default')}
 
 # 初始化Plotter
 plotter.xyMin = (config.general.minX,plotter.xyMin[1])
@@ -52,15 +51,17 @@ svgTree = ET.fromstring(data)
 if not 'svg' in svgTree.tag:
     svgTree = None
 assert svgTree, "从文件中未解析到svg标签"
-penData = parseSVG(svgTree,
-                   tolerance=config.general.tolerance,
-                   shader=shader,
-                   strokeAll=config.strokeAll,
-                   pens=pens,
-                   extractColor=rgbFromColor(config.fitting.extractColor))
-penData = removePenBob(penData) # 合并同起点终点的路径
 
-penData = dedup(penData) # 这个什么也没变
+data = plotter.parseSVG(svgTree,
+                        tolerance=config.general.tolerance,
+                        shader=None,
+                        strokeAll=config.strokeAll,
+                        extractColor=rgbFromColor(config.fitting.extractColor))
+print(data)
+
+data = removePenBob(data) # 合并同起点终点的路径
+
+# data = dedup(data) # 这个什么也没变
 
 # for pen in penData:
 #     penData[pen] = directionalize(penData[pen], config.drawing.direction)
@@ -68,11 +69,11 @@ penData = dedup(penData) # 这个什么也没变
 align = [0,0]
 scalingMode = 0 # SCALE_NONE
 gcodePause = '@pause'
-gcode = emitGcode(penData, align=align, scalingMode=scalingMode, tolerance=config.general.tolerance,
-                plotter=plotter, gcodePause=gcodePause, pens=pens)
+gcode = emitGcode(data, align=align, scalingMode=scalingMode, tolerance=config.general.tolerance,
+                plotter=plotter, gcodePause=gcodePause)
 
-for g in gcode:
-    print(g)
-# with open("output.gcode", "w") as f:
-#     for row in g:
-#         f.write(row+"\n")
+# for g in gcode:
+#     print(g)
+with open("output.gcode", "w") as f:
+    for g in gcode:
+        f.write(g+"\n")

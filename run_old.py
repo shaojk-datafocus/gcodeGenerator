@@ -66,8 +66,11 @@ penData = dedup(penData) # 这个什么也没变
 align = [0,0]
 scalingMode = 0 # SCALE_NONE
 gcodePause = '@pause'
-g = emitGcode(penData, align=align, scalingMode=scalingMode, tolerance=config.general.tolerance,
+gcode = emitGcode(penData, align=align, scalingMode=scalingMode, tolerance=config.general.tolerance,
                 plotter=plotter, gcodePause=gcodePause, pens=pens)
+
+# for g in gcode:
+#     print(g)
 # with open("output.gcode", "w") as f:
 #     for row in g:
 #         f.write(row+"\n")

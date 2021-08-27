@@ -4,6 +4,7 @@ from collections import MutableSequence
 
 # This file contains classes for the different types of SVG path segments as
 # well as a Path object that contains a sequence of path segments.
+from core.process import removeCollinear
 
 MIN_DEPTH = 5
 ERROR = 1e-12
@@ -483,7 +484,7 @@ class Path(MutableSequence):
                 
         if len(segments) > 0:
             paths.append(Path(*segments, svgState=self.svgState))
-            
+
         return paths
         
     def linearApproximation(self, error=0.001, max_depth=32):
@@ -503,7 +504,6 @@ class Path(MutableSequence):
         subpath = []
         prevEnd = None
         for i,segment in enumerate(self._segments):
-            print(segment)
             if prevEnd is None or segment.start == prevEnd:
                 if i == keepSegmentIndex:
                     keepSubpathIndex = len(subpaths)
@@ -531,7 +531,7 @@ class Path(MutableSequence):
                 linearPath.append(Line(points[j], points[j+1])) #将路径点转换成Line对象
         linearPath.closed = self.closed and linearPath._is_closable()
         linearPath.svgState = self.svgState
-
+        self.subPath = linearPath
         return linearPath
 
     def getApproximateLines(self, error=0.001, max_depth=32):

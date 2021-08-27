@@ -114,7 +114,6 @@ class Line(Segment):
         distance = (self.end - self.start)
         return sqrt(distance.real ** 2 + distance.imag ** 2)
 
-
 class CubicBezier(Segment):
     def __init__(self, start, control1, control2, end):
         super(CubicBezier, self).__init__(start,end)
@@ -160,7 +159,6 @@ class CubicBezier(Segment):
         start_point = self.point(0)
         end_point = self.point(1)
         return segment_length(self, 0, 1, start_point, end_point, error, min_depth, 0)
-
 
 class QuadraticBezier(Segment):
     def __init__(self, start, control, end):
@@ -532,7 +530,6 @@ class Path(MutableSequence):
         subpath = []
         prevEnd = None
         for i,segment in enumerate(self._segments):
-            print(segment)
             if prevEnd is None or segment.start == prevEnd:
                 if i == keepSegmentIndex:
                     keepSubpathIndex = len(subpaths)

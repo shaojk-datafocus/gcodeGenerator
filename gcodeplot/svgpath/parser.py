@@ -539,7 +539,7 @@ def getPathsFromSVG(svg):
                 return default
 
         tag = re.sub(r'.*}', '', tree.tag).lower()
-        try:
+        try: # 这里是为了考虑use标签复用场景
             savedElements[tree.attrib['id']] = tree
         except KeyError:
             pass
@@ -687,9 +687,9 @@ def getPathsFromSVG(svg):
             # viewBox[0] to width
             matrix[5] = -viewBox[1] * rescale + height
     except:
-        matrix = [ width/viewBoxWidth, 0, -viewBox[0]* width/viewBoxWidth,  
+        matrix = [ width/viewBoxWidth, 0, -viewBox[0]* width/viewBoxWidth,
                    0, -height/viewBoxHeight, viewBox[3]*height/viewBoxHeight ]
-        
+    print(matrix)
     getPaths(paths, matrix, svg, path.SVGState(), {})
 
     return ( paths, applyMatrix(matrix, complex(viewBox[0], viewBox[1])), 

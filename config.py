@@ -10,8 +10,8 @@ general.toolMode = 'draw'
 general.tolerance = 0.05 # float
 general.minX = 0
 general.minY = 0
-general.maxX = 300
-general.maxY = 300
+general.maxX = 400
+general.maxY = 400
 general.workZ = 15
 general.liftDeltaZ = 4
 general.safeDeltaZ = 20
@@ -44,6 +44,7 @@ cutting.liftCommand = ''
 cutting.downCommand = ''
 
 # 以下配置是脚本中的默认值
-SVG_PATH = "test.svg"
+# SVG_PATH = "test.svg"
+SVG_PATH = "path.svg"
 # SVG_PATH = "bilibili.svg"
 strokeAll = False

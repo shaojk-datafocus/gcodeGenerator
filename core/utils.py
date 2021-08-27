@@ -183,3 +183,21 @@ def rgbFromColor(colorName):
             return (int(colorName[1:3],16)/255., int(colorName[3:5],16)/255., int(colorName[5:7],16)/255.)
     else:
         return SVG_COLORS[colorName]
+
+def sizeFromString(text):
+    """
+    Returns size in mm, if possible.
+    """
+    text = re.sub(r'\s',r'', text)
+    try:
+        return float(text)*25.4/96 # px
+    except:
+        if text[-1] == '%':
+            return float(text[:-1]) # NOT mm
+        units = text[-2:].lower()
+        x = float(text[:-2])
+        convert = { 'mm':1, 'cm':10, 'in':25.4, 'px':25.4/96, 'pt':25.4/72, 'pc':12*25.4/72 }
+        try:
+            return x * convert[units]
+        except:
+            return x # NOT mm

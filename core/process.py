@@ -12,26 +12,22 @@ def removePenBob(data):
 
     outData = {}
 
-    for pen in data:
-        outSegments = []
-        outSegment = []
+    outSegments = []
+    outSegment = []
 
-        for segment in data[pen]:
-            if not outSegment:
-                outSegment = list(segment)
-            elif outSegment[-1] == segment[0]:
-                outSegment += segment[1:]
-            else:
-                outSegments.append(outSegment)
-                outSegment = list(segment)
-
-        if outSegment:
+    for segment in data:
+        if not outSegment:
+            outSegment = list(segment)
+        elif outSegment[-1] == segment[0]:
+            outSegment += segment[1:]
+        else:
             outSegments.append(outSegment)
+            outSegment = list(segment)
 
-        if outSegments:
-            outData[pen] = outSegments
+    if outSegment:
+        outSegments.append(outSegment)
 
-    return outData
+    return outSegments
 
 def dedup(data):
     curPoint = None
