@@ -291,14 +291,15 @@ def interstices(self, p1, p2, paths, hatches, b_hold_back_hatches, f_hold_back_s
     "paths"
     判断paths里的线段，是否在多边形内部
 
-    p1 -- (x,y) coordinate [list]
-    p2 -- (x,y) coordinate [list]
+    p1 -- (x,y) coordinate [list] hatchline起点
+    p2 -- (x,y) coordinate [list] hatchline终点
     paths -- Dictionary of all the paths to check for intersections
 
     When an intersection of the line L is found with a polygon edge, then
     the fractional distance along the line L is saved along with the
     lxml.etree node which contained the intersecting polygon edge.  This
     fractional distance is always in the range [0, 1].
+    # 线段L上的交点和多边形边界保存在一起
 
     Once all polygons have been checked, the list of fractional distances
     corresponding to intersections is sorted and any duplicates removed.
@@ -311,6 +312,10 @@ def interstices(self, p1, p2, paths, hatches, b_hold_back_hatches, f_hold_back_s
     corresponding to each intersection, we can then correlate the hatch
     fill lines to the graphical elements in the original SVG document.
     This enables us to group hatch lines with the elements being hatched.
+    所有的多边形都被检测交点距离过后，会按照这个距离进行排序和去重。
+    这就可以假定，第一个交点是线段L的进入多边形的点，第二个点是离开多边形的点。
+    第一个点与第二点的连线就是生成的hatch fill line。每个线段都是与svg结点相关的，
+    所以可以按照节点进行分组，并添加回svg。
 
     The hatch line segments are returned by populating a dictionary.
     The dictionary is keyed off of the lxml.etree node pointer.  Each
@@ -320,18 +325,24 @@ def interstices(self, p1, p2, paths, hatches, b_hold_back_hatches, f_hold_back_s
 
     where (x1, y1) and (x2, y2) are the (x,y) coordinates of the line
     segment's starting and ending points.
+    返回每个填充线段的坐标数组，如[(x1, y1, x2, y2)]
     """
 
     d_and_a = []
     # p1 & p2 is the hatch line
     # p3 & p4 is the polygon edge to check
+
+    # p1 -- (x,y) coordinate [list]
+    # p2 -- (x,y) coordinate [list]
+    # paths -- Dictionary of all the paths to check for intersections
     for path in paths:
         for subpath in paths[path]:
             p3 = subpath[0]
-            for p4 in subpath[1:]:
+            for p4 in subpath[1:]: # 依次遍历多边形每个点与上一个点的边，把有交点的数据对放入记录数组
                 s = intersect(p1, p2, p3, p4)
+                # 获取交点在hatchline上的比例
                 if 0.0 <= s <= 1.0:
-                    # Save this intersection point along the hatch line
+                    # Save this intersection point along the hatch line # 竟然真的保存的是在hatchline上的位置
                     if b_hold_back_hatches:
                         # We will need to know how the hatch meets the polygon segment, so that we can
                         # calculate the end of a shorter line that stops short
@@ -344,21 +355,29 @@ def interstices(self, p1, p2, paths, hatches, b_hold_back_hatches, f_hold_back_s
                         angle_hatch_radians = math.atan2(-(p2[1] - p1[1]), (p2[0] - p1[0]))  # from p1 toward p2, cartesian coordinates
                         angle_segment_radians = math.atan2(-(p4[1] - p3[1]), (p4[0] - p3[0]))  # from p3 toward p4, cartesian coordinates
                         angle_difference_radians = angle_hatch_radians - angle_segment_radians
+                        # 计算两个线段的弧度差
                         # coerce to range -pi to +pi
                         if angle_difference_radians > math.pi:
                             angle_difference_radians -= 2 * math.pi
                         elif angle_difference_radians < -math.pi:
                             angle_difference_radians += 2 * math.pi
+                        # 把弧度差控制到 正负pi之间
                         f_sin_of_join_angle = math.sin(angle_difference_radians)
                         f_abs_sin_of_join_angle = abs(f_sin_of_join_angle)
+                        # 求弧度差的正弦绝对值
                         if f_abs_sin_of_join_angle != 0.0:  # Worrying about case of intersecting a segment parallel to the hatch
+                            # 如果两条线段不是平行的
                             prelim_length_to_be_removed = f_hold_back_steps / f_abs_sin_of_join_angle
+                            # TODO：prelim_length_to_be_removed是什么？计算一个斜边？
                             b_unconditionally_excise_hatch = False
+                            # 不无条件移除hatch
                         else:
                             b_unconditionally_excise_hatch = True
+                            # 如果两个条线段是平行的，就无条件移除hatch
 
                         if not b_unconditionally_excise_hatch:
                             # The relevant end of the segment is the end from which the hatch approaches at an acute angle.
+                            # 计算焦点坐标
                             intersection = [0, 0]
                             intersection[0] = p1[0] + s * (p2[0] - p1[0])  # compute intersection point of hatch with segment
                             intersection[1] = p1[1] + s * (p2[1] - p1[1])  # intersecting hatch line starts at p1, vectored toward p2,
@@ -371,12 +390,16 @@ def interstices(self, p1, p2, paths, hatches, b_hold_back_hatches, f_hold_back_s
                             # We really don't need to take the time to actually take
                             #     the cosine of the angle, we are just interested in
                             #    the quadrant within which the angle lies.
+                            # 使用点乘可以判断p2是在p4上还是p3上
                             # I'm sure there is an elegant way to do this, but I'll settle for results just now.
                             # If the angle is in quadrants I or IV then p4 is the relevant end, otherwise p3 is
+                            # 角度在第一、第四象限，则p4是结束点；否则p3是结束点
                             # nb: Y increases down, rather than up
                             # nb: difference angle has been forced to the range -pi to +pi
-                            if abs(angle_difference_radians) < math.pi / 2:
+                            if abs(angle_difference_radians) < math.pi / 2: # TODO：这里好像和上面写的相反呀
                                 # It's near the p3 the relevant end from which the hatch departs
+                                # hypot 计算欧几里得范数，计算平方和的次方 sqrt(x*x + y*y)
+                                # 分别计算线段两端点与交点的欧几里得距离
                                 dist_intersection_to_relevant_end = math.hypot(p3[0] - intersection[0], p3[1] - intersection[1])
                                 dist_intersection_to_irrelevant_end = math.hypot(p4[0] - intersection[0], p4[1] - intersection[1])
                             else:
@@ -389,6 +412,8 @@ def interstices(self, p1, p2, paths, hatches, b_hold_back_hatches, f_hold_back_s
                             # we have so far been considering the polygon segment as a line of infinite extent.
                             # Thus, we may be holding back at a point where no holdback is required, when
                             # calculated holdback is well beyond the position of the segment end.
+                            # issue 22 是我们不需要移除整个初步的长度。因为我们假定多边形的边线是无限长度的，
+                            # 所以我们计算的长度可能不是线段最终的长度
 
                             # To make matters worse, we do not currently know whether we're
                             # starting a hatch or terminating a hatch, because the duplicates have
@@ -399,10 +424,12 @@ def interstices(self, p1, p2, paths, hatches, b_hold_back_hatches, f_hold_back_s
                             # Let's see if either end, or perhaps both ends, has a case of excessive holdback
 
                             # First, default assumption is that neither end has excessive holdback
+                            # 先假设两个点都正好是最适合的线段终点
                             length_remove_starting_hatch = prelim_length_to_be_removed
                             length_remove_ending_hatch = prelim_length_to_be_removed
 
                             # Now check each of the two ends
+                            # 如果交点太靠近多边形端点，小于预设的长度，那就记录更小的
                             if prelim_length_to_be_removed > (dist_intersection_to_relevant_end + f_hold_back_steps):
                                 # Yes, would be excessive holdback approaching from this direction
                                 length_remove_starting_hatch = dist_intersection_to_relevant_end + f_hold_back_steps
@@ -423,15 +450,18 @@ def interstices(self, p1, p2, paths, hatches, b_hold_back_hatches, f_hold_back_s
     if len(d_and_a) == 0:
         return None
 
-    d_and_a.sort()
+    d_and_a.sort() # 内部是可迭代对象的话，默认使用第一个值 也就是s来排序
 
     # Remove duplicate intersections.  A common case where these arise
     # is when the hatch line passes through a vertex where one line segment
     # ends and the next one begins.
+    # 重复的情况通常是hatchline在一点结束后又是另一个的起点
 
     # Having sorted the data, it's trivial to just scan through
     # removing duplicates as we go and then truncating the array
 
+    # 这里去除掉了重复的点
+    # 算法实现：如果当前点和上一个点一样，即重复点，就跳到下一个，把不一样的填充到上一个重复点的位置上
     n = len(d_and_a)
     i_last = 1
     i = 1
@@ -447,19 +477,25 @@ def interstices(self, p1, p2, paths, hatches, b_hold_back_hatches, f_hold_back_s
 
     # Now, entries with even valued indices into sa[] are where we start
     # a hatch line and odd valued indices where we end the hatch line.
+    # 现在，偶数下标是hatchline的起始点，奇数下标是hatchline的结束点
+    # 注：我认为和gcodeplot中所体现的一样，任意由一笔连成的多边形，当hatchline穿过时，
+    # 穿过点的必定是一进一出
 
+    # d_and_a = [(s, path, length_remove_starting_hatch, length_remove_ending_hatch)]
+    #           [(float, str, float, float)]
     i = 0
-    while i < (len(d_and_a) - 1):
+    while i < (len(d_and_a) - 1): # 遍历每两个hatchline的点，组成一个hatchline线段
         if d_and_a[i][1] not in hatches:
-            hatches[d_and_a[i][1]] = []
+            hatches[d_and_a[i][1]] = [] # 如果原先的hatchs中没有这条，那就加进去
 
         x1 = p1[0] + d_and_a[i][0] * (p2[0] - p1[0])
         y1 = p1[1] + d_and_a[i][0] * (p2[1] - p1[1])
         x2 = p1[0] + d_and_a[i + 1][0] * (p2[0] - p1[0])
         y2 = p1[1] + d_and_a[i + 1][0] * (p2[1] - p1[1])
+        # 计算出hatchline的进入点和离开点，连接则生成了一条hatchline
 
         # These are the hatch ends if we are _not_ holding off from the boundary.
-        if not b_hold_back_hatches:
+        if not b_hold_back_hatches: # b_hold_back_hatches 应该是True 
             hatches[d_and_a[i][1]].append([[x1, y1], [x2, y2]])
         else:
             # User wants us to perform a pseudo inset operation.
@@ -467,6 +503,7 @@ def interstices(self, p1, p2, paths, hatches, b_hold_back_hatches, f_hold_back_s
             # The amount by which to trim back depends on the angle between the
             # intersecting hatch line with the intersecting polygon segment, and
             # may well be different at the two different ends of the hatch line.
+            # 使用时想表现为伪进入的操作。通过根据角度修剪hatchline的结束点来实现。
 
             # To visualize this, imagine a hatch intersecting a segment that is
             # close to parallel with it.  The length of the hatch would have to be
@@ -488,14 +525,17 @@ def interstices(self, p1, p2, paths, hatches, b_hold_back_hatches, f_hold_back_s
             # its own angle.  If the resultant diminished hatch is too short,
             # remove it from consideration by marking it as already drawn - a
             # fiction, but is much quicker than actually removing the hatch from the list.
+            # 已知hatchline和多边形线段的夹角和hatchline的长度，就可以算出线段重点的Y坐标
+            # 对每个结束点，根据其角度角度的所需量进行修剪
+            # 如果修剪过后太短了，就可以把这个hatchline直接移除（这是一个简单粗暴的方法）
 
             f_min_allowed_hatch_length = self.options.hatchSpacing * MIN_HATCH_FRACTION
             f_initial_hatch_length = math.hypot(x2 - x1, y2 - y1)
             # We did as much as possible of the inset operation back when we were finding intersections.
             # We did it back then because at that point we knew more about the geometry than we know now.
             # Now we don't know where the ends of the segments are, so we can't address issue 22 here.
-            f_length_to_be_removed_from_pt1 = d_and_a[i][3]
-            f_length_to_be_removed_from_pt2 = d_and_a[i + 1][2]
+            f_length_to_be_removed_from_pt1 = d_and_a[i][3] # 这一条的length_remove_ending_hatch
+            f_length_to_be_removed_from_pt2 = d_and_a[i + 1][2] # 下一条的length_remove_starting_hatch
 
             if (f_initial_hatch_length - (f_length_to_be_removed_from_pt1 + f_length_to_be_removed_from_pt2)) <= f_min_allowed_hatch_length:
                 pass  # Just don't insert it into the hatch list
@@ -506,6 +546,7 @@ def interstices(self, p1, p2, paths, hatches, b_hold_back_hatches, f_hold_back_s
                     # returns the point, relative to 0, 0 offset by deltaX, deltaY,
                     # which extends a distance of "distance" at a slope defined by fDeltaX and fDeltaY
                 """
+                # (x1, y1) (x2, y2) 分别是hatchline的起始点和重点 
                 pt1 = self.RelativeControlPointPosition(f_length_to_be_removed_from_pt1, x2 - x1, y2 - y1, x1, y1)
                 pt2 = self.RelativeControlPointPosition(f_length_to_be_removed_from_pt2, x1 - x2, y1 - y2, x2, y2)
                 hatches[d_and_a[i][1]].append([[pt1[0], pt1[1]], [pt2[0], pt2[1]]])
@@ -514,6 +555,7 @@ def interstices(self, p1, p2, paths, hatches, b_hold_back_hatches, f_hold_back_s
         last_d_and_a = [d_and_a[i], d_and_a[i + 1]]
 
         i += 2
+    # 这个函数没有返回任何东西，数据全部存在hatches当中返回
 
 
 def inverseTransform(tran):
@@ -868,12 +910,14 @@ class Eggbot_Hatch(inkex.Effect):
                     # We now have a path we want to apply a (cross)hatch to
                     # Apply appropriate functions
                     b_have_grid = self.makeHatchGrid(float(self.options.hatchAngle), float(self.options.hatchSpacing), True)
+                    # 在self.grid中，存储了hatchline[(x1, y1, x2, y2), (...), ...]
                     if b_have_grid:
                         if self.options.crossHatch:
                             self.makeHatchGrid(float(self.options.hatchAngle + 90.0), float(self.options.hatchSpacing), False)
                         # Now loop over our hatch lines looking for intersections
                         for h in self.grid:
                             interstices(self, (h[0], h[1]), (h[2], h[3]), self.paths, self.hatches, self.options.holdBackHatchFromEdges, self.options.holdBackSteps)
+                            # 最终的hatchline保存在self.hatches当中
 
             elif node.tag in [inkex.addNS('rect', 'svg'), 'rect']:
 
@@ -1144,6 +1188,14 @@ class Eggbot_Hatch(inkex.Effect):
            the center of the bounding box for the graphical elements.
         7. We now have a grid of hatch lines which overlay the graphical
            elements and can now be intersected with those graphical elements.
+        1. 找出包围所有图形元素的bbox
+        2. 选一个大于所有图像的bbox的矩形
+        3. 矩形以原点为中心，这样才能进行旋转变换
+        4. 在矩形内构造hatchline
+        5. 旋转矩形到指定角度
+        6. 把旋转后矩形的中心点（原点），映射到bboxd的中心点
+        7. 现在就得到了一个可以覆盖所有图形元素的格栅，可以开始计算交点
+        提示：这里操作的都是当前选中的一个元素，而不是遍历所有的图形元素
         """
 
         # If this is the first call, do some one time initializations
@@ -1254,7 +1306,7 @@ class Eggbot_Hatch(inkex.Effect):
         n_abs_line_segment_total = 0
         n_pen_lifts = 0
         # To implement
-        for key in self.hatches:
+        for key in self.hatches: # 遍历每个hatches，生成实际的svg路径
             direction = True
             if key in self.transforms:
                 transform = inverseTransform(self.transforms[key])
@@ -1693,15 +1745,16 @@ class Eggbot_Hatch(inkex.Effect):
 
     @staticmethod
     def RelativeControlPointPosition(distance, f_delta_x, f_delta_y, delta_x, delta_y):
-
+        # 返回一个原点的到线段终点，长度为distance，斜率为线段斜率的向量
         # returns the point, relative to 0, 0 offset by delta_x, delta_y,
         # which extends a distance of "distance" at a slope defined by f_delta_x and f_delta_y
         pt_return = [0, 0]
 
-        if f_delta_x == 0:
+        if f_delta_x == 0: # 如果线段垂直
             pt_return[0] = delta_x
             pt_return[1] = math.copysign(distance, f_delta_y) + delta_y
-        elif f_delta_y == 0:
+            # copysign就是把第二个参数的正负符号，附加给第一个参数
+        elif f_delta_y == 0: # 如果线段水平
             pt_return[0] = math.copysign(distance, f_delta_x) + delta_x
             pt_return[1] = delta_y
         else:
@@ -1742,4 +1795,4 @@ class Eggbot_Hatch(inkex.Effect):
 if __name__ == '__main__':
 
     e = Eggbot_Hatch()
-    e.affect()
+    e.effect()

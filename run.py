@@ -41,7 +41,6 @@ def parseData(penData):
     for path in penData:
         for point in path:
             print("%f, %f"%point)
-        print()
 
 # 读取数据
 with open(config.SVG_PATH) as f:
@@ -54,11 +53,11 @@ assert svgTree, "从文件中未解析到svg标签"
 
 data = plotter.parseSVG(svgTree,
                         tolerance=config.general.tolerance,
-                        shader=None,
+                        shader=shader,
                         strokeAll=config.strokeAll,
                         extractColor=rgbFromColor(config.fitting.extractColor))
-print(data)
-
+# print(data)
+exit(0)
 data = removePenBob(data) # 合并同起点终点的路径
 
 # data = dedup(data) # 这个什么也没变

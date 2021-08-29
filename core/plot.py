@@ -4,11 +4,14 @@
 # @File    : plot.py
 # @Remark  :
 import re
+import json
+import math
 
 from core import parser
 from core.shader import Shader
 from core.svg import SVGElement
 from core.utils import sizeFromString, isSameColor
+from core.path import Point
 
 SCALE_NONE = 0
 SCALE_DOWN_ONLY = 1
@@ -25,11 +28,7 @@ class Plotter(object):
                  drawSpeed=35, moveSpeed=40, zSpeed=5, workZ=14.5, liftDeltaZ=2.5, safeDeltaZ=20,
                  liftCommand=None, safeLiftCommand=None, downCommand=None, comment=";",
                  initCode="G00 S1; endstops|"
-                          "G00 E0; no extrusion|"
-                          "G01 S1; endstops|"
-                          "G01 E0; no extrusion|"
                           "G21; millimeters|"
-                          "G91 G0 F%.1f{{zspeed*60}} Z%.3f{{safe}}; pen park !!Zsafe|"
                           "G90; absolute|"
                           "G28 X; home|"
                           "G28 Y; home|"
@@ -74,17 +73,99 @@ class Plotter(object):
     def parseSVG(self, svg, tolerance=0.05, shader=None, strokeAll=False, extractColor=None):
         data = []
         for path in self.getPathsFromSVG(svg):
+            # print(path)
             lines = []
 
             stroke = strokeAll or (path.svgState.stroke is not None and (
                         extractColor is None or isSameColor(path.svgState.stroke, extractColor)))
             # stroke = True
-            # TODO: 目前先不考虑不同颜色笔的情况，因为绘图仪目前没有这个功能
             for line in path.linearApproximation(error=tolerance):  # 返回一个Path对象，里面是经过直线化和共线合并处理的Line对象
                 if stroke:
                     data.append([(line.start.real, line.start.imag), (line.end.real, line.end.imag)])
                 lines.append((line.start, line.end))  # lines又存储成了线段的端点组
             print(lines)
+            # lines 多边形的线段 [4, 2, 2]
+            angleDegrees = 45
+            spacing = 1
+            deltaY = spacing / 2
+            # 使用旋转变换，变换各点的坐标
+            # 构造变换矩阵
+            rotate = complex(math.cos(angleDegrees * math.pi / 180.), math.sin(angleDegrees * math.pi / 180.))
+            cos = math.cos(angleDegrees * math.pi / 180)
+            sin = math.sin(angleDegrees * math.pi / 180)
+            rotate_inverse_matrix = [[cos, -sin], [sin, cos]] # 逆时针旋转
+            polygon = [(line[0] / rotate, line[1] / rotate) for line in lines]  # 所有的点逆时针旋转45度
+            # 获取图形Y轴的范围
+            minY = min(min(line[0].imag, line[1].imag) for line in polygon)
+            maxY = max(max(line[0].imag, line[1].imag) for line in polygon)
+            print(polygon)
+
+            # output = []
+            # for line in polygon:
+            #     for point in line:
+            #         p = Point(point.real, point.imag)
+            #         p.transform(rotate_inverse_matrix)
+            #         output.append(p)
+            # print(output)
+
+            # 遍历整个y轴范围
+            hatchlines = []
+            y = minY + deltaY
+            maxBatch = 1
+            while y < maxY:
+                # for 遍历所有多边形线段:
+                intersections = []
+                for line in polygon:
+                    start = line[0]
+                    end = line[1]
+                    if end.imag == y or start.imag == y:
+                        # 如果hatchline正好经过多边形的端点，那就忽略
+                        break
+                    # y已知，计算出x，得到交点坐标
+                    if end.imag < y < start.imag or start.imag < y < end.imag:  # 如果当前填充线y在线段之间
+                        if end.real == start.real:  # 如果该线段是竖直的, 在当前线段上放一个点，并记录点在线段起始点的上方还是下方
+                            # intersections.append((complex(start.real, y), start.imag < y, line))  # ∵tant90° 不存在
+                            intersections.append(Point(start.real,y))
+                            print(start.real)
+                        else:  # 如果线段不是竖直的
+                            k = (end.imag - start.imag) / (end.real - start.real) # 计算边的斜率
+                            # k * (x - z.real) = y - z.imag
+                            # so: x = (y - z.imag) / k + z.real
+                            # 求线段上的一个点[x, y](y已知)，使点在线段内
+                            # intersections.append(complex((y - start.imag) / k + start.real, y))
+                            intersections.append(Point((y-start.imag)/k+start.real,y))
+                    # hatchline排序、去重
+                    intersections.sort(key=lambda p: p.x)
+                maxBatch = max(maxBatch, len(intersections)/2)
+                hatchlines.append(intersections)
+                y += spacing
+            # 分组合并
+            def mySort(l):
+                return l[0].y
+            hatchlinesBatchly = []
+            for i in range(maxBatch):
+                lines = []
+                for hatchline in hatchlines:
+                    lines.append(hatchline[i:i+2])
+                lines.sort(key=lambda l: l[0].y) # 按照Y轴排序
+                hatchlinesBatchly.append(lines)
+            # hatchline连笔分组
+            #
+            # # 逆变换变回原坐标系
+            # return [(line[0][0] * rotate, line[1][0] * rotate) for line in all]  # 把所有点顺时针旋转回去
+            for hatchlines in hatchlinesBatchly:
+                for hatchline in hatchlines:
+                    for point in hatchline:
+                        point.transform(rotate_inverse_matrix)
+            with open("output.csv", "w") as f:
+                for hatchlines in hatchlinesBatchly:
+                    for hatchline in hatchlines:
+                        row = ''
+                        for point in hatchline:
+                            row += str(point)+','
+                        f.write(row[:-1]+'\n')
+                    f.write('\n')
+            continue
             # 需要svg的path的fill属性不为空，并且指定的提取颜色与填充颜色一致才会执行Shader操作
             if shader is not None and shader.isActive() and path.svgState.fill is not None and (extractColor is None or
                                                                                                 isSameColor(

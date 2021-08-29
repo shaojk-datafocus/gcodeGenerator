@@ -378,7 +378,7 @@ class Path(MutableSequence):
         return len(self._segments)
 
     def __repr__(self):
-        return 'Path(%s, closed=%s)' % (
+        return 'Path[%s, closed=%s]' % (
             ', '.join(repr(x) for x in self._segments), self.closed)
 
     def __eq__(self, other):
@@ -614,3 +614,28 @@ class Path(MutableSequence):
 
         return ' '.join(parts)
         
+class Point():
+    def __init__(self, x, y):
+        self.x = float(x)
+        self.y = float(y)
+
+    def __repr__(self):
+        return "P(%.2f, %.2f)"%(self.x, self.y)
+
+    def __str__(self):
+        return "%.2f, %.2f"%(self.x, self.y)
+
+    def __add__(self, other):
+        assert type(other) == Point, "Point cannot add %s type"%type(other)
+        return (self.x + other.x, self.y + other.y)
+
+    def __sub__(self, other):
+        assert type(other) == Point, "Point cannot substract %s type"%type(other)
+        return (self.x - other.x, self.y - other.y)
+
+    def transform(self, matrix):
+        """矩阵变换"""
+        x = self.x * matrix[0][0] + self.y * matrix[0][1]
+        y = self.x * matrix[1][0] + self.y * matrix[1][1]
+        self.x = x
+        self.y = y

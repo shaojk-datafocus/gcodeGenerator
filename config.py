@@ -44,7 +44,7 @@ cutting.liftCommand = ''
 cutting.downCommand = ''
 
 # 以下配置是脚本中的默认值
-# SVG_PATH = "test.svg"
-SVG_PATH = "path.svg"
+SVG_PATH = "test.svg"
+# SVG_PATH = "path.svg"
 # SVG_PATH = "bilibili.svg"
 strokeAll = False
