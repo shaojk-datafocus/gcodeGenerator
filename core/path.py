@@ -1,4 +1,6 @@
 from __future__ import division
+
+import math
 from math import sqrt, cos, sin, acos, degrees, radians, log
 from collections import MutableSequence
 
@@ -639,3 +641,22 @@ class Point():
         y = self.x * matrix[1][0] + self.y * matrix[1][1]
         self.x = x
         self.y = y
+
+class Hatchline(object):
+    def __init__(self, start, end):
+        self.start  = start
+        self.end    = end
+        self.updateVarible()
+
+    def updateVarible(self):
+        if self.end.x - self.start.x != 0:
+            self.k = (self.end.y - self.start.y) / (self.end.x - self.start.x)
+        else:
+            self.k = None
+        self.length = math.hypot(self.end.y - self.start.y, self.end.x - self.start.x)
+
+    def reverse(self):
+        p = self.start
+        self.start = self.end
+        self.end = p
+        self.k = None if self.k is None else -self.k

@@ -3,6 +3,7 @@
 # @Author  : ShaoJK
 # @File    : svg.py
 # @Remark  :
+import math
 import re
 from xml.etree.ElementTree import Element
 
@@ -14,6 +15,26 @@ UPPERCASE = set('MZLHVCSQTA')
 
 COMMAND_RE = re.compile("([MmZzLlHhVvCcSsQqTtAa])")
 FLOAT_RE = re.compile("[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?")
+
+
+def reorder(a, b, c, d, e, f):
+    return [a, c, e, b, d, f]
+
+def matrixMultiply(matrix1, matrix2):
+    if matrix1 is None:
+        return matrix2
+    elif matrix2 is None:
+        return matrix1
+
+    m1 = [matrix1[0:3], matrix1[3:6]]  # don't need last row
+    m2 = [matrix2[0:3], matrix2[3:6], [0, 0, 1]]
+
+    out = []
+
+    for i in range(2):
+        for j in range(3):
+            out.append(sum(m1[i][k] * m2[k][j] for k in range(3)))
+    return out
 
 def _tokenize_path(pathdef):
     for x in COMMAND_RE.split(pathdef):
@@ -51,6 +72,7 @@ class SVGElement(object):
         self.matrix = matrix
         self.paths = []
         self.parseElement()
+        self.updateMatrix()
 
     def __repr__(self):
         return 'SVGElement(%s, paths=%d, state=%s, matrix=%s)' % (self.tag, len(self.paths), repr(self.state), self.matrix)
@@ -58,6 +80,53 @@ class SVGElement(object):
     def __iter__(self):
         for path in self.paths:
             yield path
+
+    def updateMatrix(self):
+        try:
+            print(self.svg.attrib['transform'].strip())
+            transformList = re.split(r'\)[\s,]+', self.svg.attrib['transform'].strip().lower())
+        except KeyError:
+            return
+
+        for transform in transformList:
+            cmd = re.split(r'[,()\s]+', transform)
+
+            updateMatrix = None
+            print(cmd)
+            if cmd[0] == 'matrix':
+                updateMatrix = reorder(*list(map(float, cmd[1:7])))
+            elif cmd[0] == 'translate':
+                x = float(cmd[1])
+                if len(cmd) >= 3 and cmd[2] != '':
+                    y = float(cmd[2])
+                else:
+                    y = 0
+                updateMatrix = reorder(1, 0, 0, 1, x, y)
+            elif cmd[0] == 'scale':
+                x = float(cmd[1])
+                if len(cmd) >= 3 and cmd[2] != '':
+                    y = float(cmd[2])
+                else:
+                    y = x
+                print("发")
+                updateMatrix = reorder(x, 0, 0, y, 0, 0)
+            elif cmd[0] == 'rotate':
+                theta = float(cmd[1]) * math.pi / 180.
+                c = math.cos(theta)
+                s = math.sin(theta)
+                updateMatrix = [c, -s, 0, s, c, 0]
+                if len(cmd) >= 4 and cmd[2] != '':
+                    x = float(cmd[2])
+                    y = float(cmd[3])
+                    updateMatrix = matrixMultiply(updateMatrix, [1, 0, -x, 0, 1, -y])
+                    updateMatrix = matrixMultiply([1, 0, x, 0, 1, y], updateMatrix)
+            elif cmd[0] == 'skewX':
+                theta = float(cmd[1]) * math.pi / 180.
+                updateMatrix = [1, math.tan(theta), 0, 0, 1, 0]
+            elif cmd[0] == 'skewY':
+                theta = float(cmd[1]) * math.pi / 180.
+                updateMatrix = [1, 0, 0, math.tan(theta), 1, 0]
+            self.matrix = matrixMultiply(self.matrix, updateMatrix)
 
     def parseElement(self):
         # 处理不同的标签
@@ -106,9 +175,6 @@ class SVGElement(object):
             return None
             raise KeyError('parseElement encounter unknown tag: %s'%self.tag)
 
-    def applyMatrix(self, matrix, z):
-        return complex(z.real * matrix[0] + z.imag * matrix[1] + matrix[2],
-                       z.real * matrix[3] + z.imag * matrix[4] + matrix[5])
     def scaler(self, p):
         if self.matrix is None:
             return p
@@ -117,7 +183,6 @@ class SVGElement(object):
             # matrix[0] = 画布宽与视窗宽比  matrix[4]= 画布高与视窗高度比的负数
             # matrix[5] =
             return complex(p.real * self.matrix[0] + self.matrix[2], p.imag * self.matrix[4])
-            # TODO: 不能理解为什么要使用这个matrix[5], 以及matrix[4]为什么使用负数，应该下文进行旋转的时候有需要
             # 有可能是因为svg的y轴与cnc画图y轴是相反的，需要需要这么操作，不然图像可能会翻转
             return complex(p.real * self.matrix[0] + p.imag * self.matrix[1] + self.matrix[2],
                        p.real * self.matrix[3] + p.imag * self.matrix[4] + self.matrix[5])
@@ -127,6 +192,7 @@ class SVGElement(object):
         # specified as 'm'. This is the default behavior here as well.
         # But if you pass in a current_pos variable, the initial moveto
         # will be relative to that current_pos. This is useful.
+
         elements = list(_tokenize_path(pathdef))
         # Reverse for easy use of .pop()
         elements.reverse()

@@ -43,7 +43,7 @@ def parseData(penData):
             print("%f, %f"%point)
 
 # 读取数据
-with open(config.SVG_PATH) as f:
+with open(config.SVG_PATH, encoding='utf-8') as f:
     data = f.read()
 # 解析SVG
 svgTree = ET.fromstring(data)

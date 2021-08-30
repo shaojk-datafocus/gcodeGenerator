@@ -1,14 +1,5 @@
-import os
-import turtle
 
-turtle.home()
-turtle.dot()
+l = [1,2,3,4,5,6,7]
 
-for p in [(0, 0), (100, 0), (100, -100), (0, -100)]:
-    # for p in [(0, 0),(100,0),(0,-100), (-100, 0)]:
-    # t.up()
-    turtle.goto(p[0], p[1])
-    turtle.dot(10)
-turtle.heading()
-
-os.system("pause")
+l.insert(1,9)
+print(l[1:])

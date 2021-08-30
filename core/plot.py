@@ -11,7 +11,7 @@ from core import parser
 from core.shader import Shader
 from core.svg import SVGElement
 from core.utils import sizeFromString, isSameColor
-from core.path import Point
+from core.path import Point, Hatchline
 
 SCALE_NONE = 0
 SCALE_DOWN_ONLY = 1
@@ -22,6 +22,9 @@ ALIGN_TOP = 2
 ALIGN_LEFT = ALIGN_BOTTOM
 ALIGN_RIGHT = ALIGN_TOP
 ALIGN_CENTER = 3
+
+def compute_distance(a, b):
+    return math.hypot(b.x-a.x, b.y-a.y)
 
 class Plotter(object):
     def __init__(self, xyMin=(7, 8), xyMax=(204, 178),
@@ -83,10 +86,9 @@ class Plotter(object):
                 if stroke:
                     data.append([(line.start.real, line.start.imag), (line.end.real, line.end.imag)])
                 lines.append((line.start, line.end))  # lines又存储成了线段的端点组
-            print(lines)
             # lines 多边形的线段 [4, 2, 2]
             angleDegrees = 45
-            spacing = 1
+            spacing = 3
             deltaY = spacing / 2
             # 使用旋转变换，变换各点的坐标
             # 构造变换矩阵
@@ -98,15 +100,6 @@ class Plotter(object):
             # 获取图形Y轴的范围
             minY = min(min(line[0].imag, line[1].imag) for line in polygon)
             maxY = max(max(line[0].imag, line[1].imag) for line in polygon)
-            print(polygon)
-
-            # output = []
-            # for line in polygon:
-            #     for point in line:
-            #         p = Point(point.real, point.imag)
-            #         p.transform(rotate_inverse_matrix)
-            #         output.append(p)
-            # print(output)
 
             # 遍历整个y轴范围
             hatchlines = []
@@ -126,13 +119,11 @@ class Plotter(object):
                         if end.real == start.real:  # 如果该线段是竖直的, 在当前线段上放一个点，并记录点在线段起始点的上方还是下方
                             # intersections.append((complex(start.real, y), start.imag < y, line))  # ∵tant90° 不存在
                             intersections.append(Point(start.real,y))
-                            print(start.real)
                         else:  # 如果线段不是竖直的
                             k = (end.imag - start.imag) / (end.real - start.real) # 计算边的斜率
                             # k * (x - z.real) = y - z.imag
                             # so: x = (y - z.imag) / k + z.real
                             # 求线段上的一个点[x, y](y已知)，使点在线段内
-                            # intersections.append(complex((y - start.imag) / k + start.real, y))
                             intersections.append(Point((y-start.imag)/k+start.real,y))
                     # hatchline排序、去重
                     intersections.sort(key=lambda p: p.x)
@@ -140,30 +131,55 @@ class Plotter(object):
                 hatchlines.append(intersections)
                 y += spacing
             # 分组合并
-            def mySort(l):
-                return l[0].y
             hatchlinesBatchly = []
             for i in range(int(maxBatch)):
                 lines = []
                 for hatchline in hatchlines:
-                    lines.append(hatchline[i:i+2])
-                lines.sort(key=lambda l: l[0].y) # 按照Y轴排序
+                    if len(hatchline) > 2*i:
+                        line = Hatchline(*hatchline[2*i:2*i+2])
+                        # 逆变换变回原坐标系
+                        line.start.transform(rotate_inverse_matrix)
+                        line.end.transform(rotate_inverse_matrix)
+                        lines.append(line)
+                # lines.sort(key=lambda l: l[0].y) # 按照Y轴排序
                 hatchlinesBatchly.append(lines)
             # hatchline连笔分组
-            #
-            # # 逆变换变回原坐标系
-            # return [(line[0][0] * rotate, line[1][0] * rotate) for line in all]  # 把所有点顺时针旋转回去
-            for hatchlines in hatchlinesBatchly:
-                for hatchline in hatchlines:
-                    for point in hatchline:
-                        point.transform(rotate_inverse_matrix)
+            j = 0
+            while j < len(hatchlinesBatchly):
+                hatchlines = hatchlinesBatchly[j]
+                last_end = hatchlines[0].end
+                i = 1
+                while i < len(hatchlines): # 每组hatchline应该是可练笔的
+                    hatchline = hatchlines[i]
+                    d_start = compute_distance(last_end, hatchline.start)
+                    d_end = compute_distance(last_end, hatchline.end)
+                    if d_start > d_end:
+                        hatchline.reverse()
+                        d_start = d_end
+                    if d_start > spacing*2: # 如果连笔点距离超出距离，就开启新线段
+                        # hatchlinesBatchly.append(hatchlines[i:])
+                        hatchlinesBatchly.insert(j+1,hatchlines[i:])
+                        hatchlinesBatchly[j] = hatchlines[:i]
+                        break
+                    else:
+                        hatchlines.insert(i, Hatchline(last_end, hatchline.start))
+                        last_end = hatchline.end
+                        i += 2
+                j += 1
+            # 将原多边行边框加入
+            border = []
+            for line in polygon:
+                p1 = Point(line[0].real, line[0].imag)
+                p2 = Point(line[1].real, line[1].imag)
+                p1.transform(rotate_inverse_matrix)
+                p2.transform(rotate_inverse_matrix)
+                border.append(Hatchline(p1,p2))
+            hatchlinesBatchly.insert(0, border)
+
             with open("output.csv", "w") as f:
                 for hatchlines in hatchlinesBatchly:
                     for hatchline in hatchlines:
-                        row = ''
-                        for point in hatchline:
-                            row += str(point)+','
-                        f.write(row[:-1]+'\n')
+                        f.write('%s, %s\n'%(hatchline.start, hatchline.end))
                     f.write('\n')
             continue
             # 需要svg的path的fill属性不为空，并且指定的提取颜色与填充颜色一致才会执行Shader操作
@@ -204,6 +220,8 @@ class Plotter(object):
 
         matrix = [width / viewBoxWidth, 0, -viewBox[0] * width / viewBoxWidth,
                   0, height / viewBoxHeight, viewBox[3] * height / viewBoxHeight]
+        matrix[0] = 2
+        matrix[4] = -2
         # 递归遍历所有图层，获取path
         # self.getPaths(matrix, svg)
         return SVGElement(svg, matrix)
