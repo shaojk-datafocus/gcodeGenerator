@@ -143,7 +143,7 @@ class Plotter(object):
             def mySort(l):
                 return l[0].y
             hatchlinesBatchly = []
-            for i in range(maxBatch):
+            for i in range(int(maxBatch)):
                 lines = []
                 for hatchline in hatchlines:
                     lines.append(hatchline[i:i+2])
