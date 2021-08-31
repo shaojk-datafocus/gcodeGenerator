@@ -8,6 +8,7 @@
 def removePenBob(data):
     """
     Merge segments with same beginning and end
+    为了连笔
     """
 
     outData = {}

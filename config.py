@@ -46,5 +46,8 @@ cutting.downCommand = ''
 # 以下配置是脚本中的默认值
 # SVG_PATH = "svg/test.svg"
 # SVG_PATH = "svg/path.svg"
-SVG_PATH = "svg/bilibili.svg"
+SVG_PATH = "svg/ellipse.svg"
+SVG_PATH = "svg/text.svg"
+SVG_PATH = "svg/love.svg"
+# SVG_PATH = "svg/bilibili.svg"
 strokeAll = False

@@ -3,6 +3,7 @@
 # @Author  : ShaoJK
 # @File    : run.py
 # @Remark  :
+import os
 import sys
 
 import config
@@ -50,21 +51,23 @@ svgTree = ET.fromstring(data)
 if not 'svg' in svgTree.tag:
     svgTree = None
 assert svgTree, "从文件中未解析到svg标签"
-
 data = plotter.parseSVG(svgTree,
                         tolerance=config.general.tolerance,
                         shader=shader,
                         strokeAll=config.strokeAll,
                         extractColor=rgbFromColor(config.fitting.extractColor))
 # print(data)
-exit(0)
-data = removePenBob(data) # 合并同起点终点的路径
+data = removePenBob(data) # 合并同起点终点的路径，为了连笔
 
-# data = dedup(data) # 这个什么也没变
+# data = dedup(data) # 去重
 
-# for pen in penData:
-#     penData[pen] = directionalize(penData[pen], config.drawing.direction)
-# penData = removePenBob(penData)
+print(len(data))
+with open("output.csv", "w") as f:
+    for hatchlines in data:
+        for hatchline in hatchlines:
+            f.write('%s, %s\n' % (hatchline.start, hatchline.end))
+        f.write('\n')
+exit(1)
 align = [0,0]
 scalingMode = 0 # SCALE_NONE
 gcodePause = '@pause'

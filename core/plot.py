@@ -76,7 +76,7 @@ class Plotter(object):
     def parseSVG(self, svg, tolerance=0.05, shader=None, strokeAll=False, extractColor=None):
         data = []
         for path in self.getPathsFromSVG(svg):
-            # print(path)
+            print(path)
             lines = []
 
             stroke = strokeAll or (path.svgState.stroke is not None and (
@@ -175,34 +175,7 @@ class Plotter(object):
                 p2.transform(rotate_inverse_matrix)
                 border.append(Hatchline(p1,p2))
             hatchlinesBatchly.insert(0, border)
-
-            with open("output.csv", "w") as f:
-                for hatchlines in hatchlinesBatchly:
-                    for hatchline in hatchlines:
-                        f.write('%s, %s\n'%(hatchline.start, hatchline.end))
-                    f.write('\n')
-            continue
-            # 需要svg的path的fill属性不为空，并且指定的提取颜色与填充颜色一致才会执行Shader操作
-            if shader is not None and shader.isActive() and path.svgState.fill is not None and (extractColor is None or
-                                                                                                isSameColor(
-                                                                                                    path.svgState.fill,
-                                                                                                    extractColor)):
-                grayscale = sum(path.svgState.fill) / 3.  # 计算灰度，灰度相当于图片的亮度图
-                mode = Shader.MODE_NONZERO if path.svgState.fillRule == 'nonzero' else Shader.MODE_EVEN_ODD
-                # mode = 1 # nonzero
-                if path.svgState.fillOpacity is not None:  # fillOpacity是None
-                    grayscale = grayscale * path.svgState.fillOpacity + 1. - path.svgState.fillOpacity  # TODO: real alpha!
-                # avoidOutline 是False
-                # lines是直线化处理后线段的端点组列表
-                fillLines = shader.shade(lines, grayscale, mode=mode)
-                # fillLines 是填充线
-                for line in fillLines:
-                    data.append([(line[0].real, line[0].imag), (line[1].real, line[1].imag)])
-                # 仅保留填充线？原先的轮廓线不管了？
-            else:
-                for line in lines:
-                    data.append([(line[0].real, line[0].imag), (line[1].real, line[1].imag)])
-
+            data += hatchlinesBatchly
         return data
 
     def getPathsFromSVG(self,svg) -> SVGElement:

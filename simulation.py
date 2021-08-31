@@ -21,7 +21,6 @@ def simulate_point(path):
             if hatchline:
                 hatchlines.append(tuple([float(point) for point in hatchline.split(",")]))
         hatchlinesBatchly.append(hatchlines)
-    print(len(hatchlinesBatchly))
     draw(hatchlinesBatchly)
 
 def simulate_path():
@@ -56,5 +55,6 @@ def draw(data):
     os.system("pause")
 
 if __name__ == '__main__':
+    start_time = time.time()
     simulate_point('output.csv')
-
+    print(time.time()-start_time)
