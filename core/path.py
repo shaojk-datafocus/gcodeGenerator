@@ -35,7 +35,7 @@ def approximate(path, start, end, start_point, end_point, max_error, depth, max_
         return [start_point, end_point]
     actual_length = path.measure(start, end, error=max_error/4)
     linear_length = abs(end_point - start_point)
-    # Worst case deviation given a fixed linear_length and actual_length would probably be 
+    # Worst case deviation given a fixed linear_length and actual_length would probably be
     # a symmetric tent shape (I haven't proved it -- TODO).
     deviationSquared = (actual_length/2)**2 - (linear_length/2)**2 # 这里应该是个微分概念
     if deviationSquared <= max_error ** 2: # 如果曲线距离与直线距离误差已经很小了，那么就返回直线点
@@ -43,14 +43,14 @@ def approximate(path, start, end, start_point, end_point, max_error, depth, max_
     else: # 否则继续区中递归
         mid = (start+end)/2.
         mid_point = path.point(mid)
-        return ( approximate(path, start, mid, start_point, mid_point, max_error, depth+1, max_depth)[:-1] + 
+        return ( approximate(path, start, mid, start_point, mid_point, max_error, depth+1, max_depth)[:-1] +
                     approximate(path, mid, end, mid_point, end_point, max_error, depth+1, max_depth) )
-                    
+
 class Segment(object):
     def __init__(self, start, end):
         self.start = start
         self.end = end
-        
+
     def measure(self, start, end, error=ERROR, min_depth=MIN_DEPTH):
         return Path(self).measure(start, end, error=error, min_depth=min_depth)
 
@@ -74,7 +74,7 @@ class Line(Segment):
         if not isinstance(other, Line):
             return NotImplemented
         return not self == other
-        
+
     def getApproximatePoints(self, error=0.001, max_depth=32):
         return [self.start, self.end]
 
@@ -217,7 +217,7 @@ class Arc(Segment):
         self.scaler = scaler
 
         self._parameterize()
-        
+
     def __repr__(self):
         return 'Arc(start0=%s, radius=%s, rotation=%s, arc=%s, sweep=%s, end0=%s, scaler=%s)' % (
                self.start0, self.radius, self.rotation, self.arc, self.sweep, self.end0, self.scaler)
@@ -300,7 +300,7 @@ class Arc(Segment):
         self.delta = delta % 360
         if not self.sweep:
             self.delta -= 360
-            
+
     def point(self, pos):
         if pos == 0.:
             return self.start
@@ -309,7 +309,6 @@ class Arc(Segment):
         angle = radians(self.theta + (self.delta * pos))
         cosr = cos(radians(self.rotation))
         sinr = sin(radians(self.rotation))
-
         x = (cosr * cos(angle) * self.radius.real - sinr * sin(angle) *
              self.radius.imag + self.center.real)
         y = (sinr * cos(angle) * self.radius.real + cosr * sin(angle) *
@@ -334,11 +333,11 @@ class SVGState(object):
         self.strokeOpacity = strokeOpacity
         self.strokeWidth = strokeWidth
         self.strokeWidthScaling = strokeWidthScaling
-                
+
     def clone(self):
         return SVGState(fill=self.fill, fillOpacity=self.fillOpacity, fillRule=self.fillRule, stroke=self.stroke, strokeOpacity=self.strokeOpacity,
                 strokeWidth=self.strokeWidth, strokeWidthScaling=self.strokeWidthScaling)
-        
+
 class Path(MutableSequence):
     """A Path is a sequence of path segments"""
 
@@ -430,7 +429,7 @@ class Path(MutableSequence):
     def length(self, error=ERROR, min_depth=MIN_DEPTH):
         self._calc_lengths(error, min_depth)
         return self._length
-        
+
     def measure(self, start, end, error=ERROR, min_depth=MIN_DEPTH):
         self._calc_lengths(error=error)
         if start == 0.0 and end == 1.0:
@@ -448,7 +447,7 @@ class Path(MutableSequence):
                     length += self._lengths[index] * self._length
                 else:
                     if start <= segment_start:
-                        start_in_segment = 0. 
+                        start_in_segment = 0.
                     else:
                         start_in_segment = (start-segment_start)/(segment_end-segment_start)
                     if segment_end <= end:
@@ -456,11 +455,11 @@ class Path(MutableSequence):
                     else:
                         end_in_segment = (end-segment_start)/(segment_end-segment_start)
                     segment = self._segments[index]
-                    length += segment_length(segment, start_in_segment, end_in_segment, segment.point(start_in_segment), 
+                    length += segment_length(segment, start_in_segment, end_in_segment, segment.point(start_in_segment),
                                 segment.point(end_in_segment), error, MIN_DEPTH, 0)
             segment_start = segment_end
         return length
-        
+
     def _is_closable(self):
         """Returns true if the end is on the start of a segment"""
         try:
@@ -471,7 +470,7 @@ class Path(MutableSequence):
             if segment.start == end:
                 return True
         return False
-        
+
     def breakup(self):
         paths = []
         prevEnd = None
@@ -483,12 +482,12 @@ class Path(MutableSequence):
                 paths.append(Path(*segments, svgState=self.svgState))
                 segments = [segment]
             prevEnd = segment.point(1.)
-                
+
         if len(segments) > 0:
             paths.append(Path(*segments, svgState=self.svgState))
 
         return paths
-        
+
     def linearApproximation(self, error=0.001, max_depth=32):
         closed = False
         keepSegmentIndex = 0 # 一般该值就是0
@@ -519,7 +518,7 @@ class Path(MutableSequence):
             subpaths.append(subpath)
         # subpaths 包含了多条被直线分解的路径点，实际就一条路径
         linearPath = Path(svgState=self.svgState)
-        
+
         for i,subpath in enumerate(subpaths):
             keep = set((keepPointIndex,)) if i == keepSubpathIndex else set()
             # keep = {0}
@@ -615,7 +614,7 @@ class Path(MutableSequence):
             parts.append('Z')
 
         return ' '.join(parts)
-        
+
 class Point():
     def __init__(self, x, y):
         self.x = float(x)
@@ -628,12 +627,16 @@ class Point():
         return "%.2f, %.2f"%(self.x, self.y)
 
     def __add__(self, other):
-        assert type(other) == Point, "Point cannot add %s type"%type(other)
-        return (self.x + other.x, self.y + other.y)
+        if hasattr(other,'x') and hasattr(other,'y'):
+            return Point(self.x + other.x, self.y + other.y)
+        else:
+            return Point(self.x + other[0], self.y + other[1])
 
     def __sub__(self, other):
-        assert type(other) == Point, "Point cannot substract %s type"%type(other)
-        return (self.x - other.x, self.y - other.y)
+        if hasattr(other,'x') and hasattr(other,'y'):
+            return Point(self.x - other.x, self.y - other.y)
+        else:
+            return Point(self.x - other[0], self.y - other[1])
 
     def transform(self, matrix):
         """矩阵变换"""

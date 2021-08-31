@@ -1,5 +1,7 @@
+# coding = utf-8
+import numpy as np
 
-l = [1,2,3,4,5,6,7]
+matrix = np.array([[2,0],[0,2]])
+p = np.array([[3],[4]])
 
-l.insert(1,9)
-print(l[1:])
+print(matrix.dot(p)+p)

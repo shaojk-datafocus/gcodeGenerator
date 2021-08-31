@@ -5,10 +5,11 @@
 # @Remark  :
 import math
 import re
+import numpy as np
 from xml.etree.ElementTree import Element
 
 from core import path
-
+from core.path import Point
 
 COMMANDS = set('MmZzLlHhVvCcSsQqTtAa')
 UPPERCASE = set('MZLHVCSQTA')
@@ -108,7 +109,6 @@ class SVGElement(object):
                     y = float(cmd[2])
                 else:
                     y = x
-                print("发")
                 updateMatrix = reorder(x, 0, 0, y, 0, 0)
             elif cmd[0] == 'rotate':
                 theta = float(cmd[1]) * math.pi / 180.
@@ -146,17 +146,17 @@ class SVGElement(object):
             x2 = self.getFloatAttribute('x2')
             y2 = self.getFloatAttribute('y2')
             p = 'M %.9f %.9f L %.9f %.9f' % (x1,y1,x2,y2)
-            path = self.parse_path(p, matrix=self.matrix)
+            path = self.parse_path(p)
             self.paths.append(path)
         elif self.tag == 'polygon':
             points = re.split(r'[\s,]+', self.svg.attrib['points'].strip())
             p = ' '.join(['M', points[0], points[1], 'L'] + points[2:] + ['Z'])
-            path = self.parse_path(p, matrix=self.matrix)
+            path = self.parse_path(p)
             self.paths.append(path)
         elif self.tag == 'polyline':
             points = re.split(r'[\s,]+', self.svg.attrib['points'].strip())
             p = ' '.join(['M', points[0], points[1], 'L'] + points[2:])
-            path = self.parse_path(p, matrix=self.matrix)
+            path = self.parse_path(p)
             self.paths.append(path)
         elif self.tag == 'rect':
             x = self.getFloatAttribute('x')
@@ -182,12 +182,13 @@ class SVGElement(object):
             # matrix[1] = 0  matrix[3] = 0
             # matrix[0] = 画布宽与视窗宽比  matrix[4]= 画布高与视窗高度比的负数
             # matrix[5] =
+            return p.transform(self.matrix)
             return complex(p.real * self.matrix[0] + self.matrix[2], p.imag * self.matrix[4])
             # 有可能是因为svg的y轴与cnc画图y轴是相反的，需要需要这么操作，不然图像可能会翻转
             return complex(p.real * self.matrix[0] + p.imag * self.matrix[1] + self.matrix[2],
                        p.real * self.matrix[3] + p.imag * self.matrix[4] + self.matrix[5])
 
-    def parse_path(self, pathdef, current_pos=0j):
+    def parse_path(self, pathdef, current_pos=Point(0,0)):
         # In the SVG specs, initial movetos are absolute, even if
         # specified as 'm'. This is the default behavior here as well.
         # But if you pass in a current_pos variable, the initial moveto
@@ -221,7 +222,7 @@ class SVGElement(object):
                 # Moveto command.
                 x = elements.pop()
                 y = elements.pop()
-                pos = float(x) + float(y) * 1j
+                pos = Point(float(x),float(y))
                 if absolute:
                     current_pos = pos
                 else:
@@ -250,7 +251,7 @@ class SVGElement(object):
             elif command == 'L':
                 x = elements.pop()
                 y = elements.pop()
-                pos = float(x) + float(y) * 1j
+                Point(float(x),float(y))
                 if not absolute:
                     pos += current_pos
                 segments.append(path.Line(self.scaler(current_pos), self.scaler(pos)))
@@ -258,7 +259,7 @@ class SVGElement(object):
 
             elif command == 'H':
                 x = elements.pop()
-                pos = float(x) + current_pos.imag * 1j
+                pos = Point(float(x),current_pos.y)
                 if not absolute:
                     pos += current_pos.real
                 segments.append(path.Line(self.scaler(current_pos), self.scaler(pos)))
@@ -266,22 +267,26 @@ class SVGElement(object):
 
             elif command == 'V':
                 y = elements.pop()
-                pos = current_pos.real + float(y) * 1j
+                # pos = current_pos.real + float(y) * 1j
+                pos = Point(current_pos.x, float(y))
                 if not absolute:
-                    pos += current_pos.imag * 1j
+                    pos.y += current_pos.y
+                    # pos += current_pos.imag * 1j
                 segments.append(path.Line(self.scaler(current_pos), self.scaler(pos)))
                 current_pos = pos
 
             elif command == 'C':
-                control1 = float(elements.pop()) + float(elements.pop()) * 1j
-                control2 = float(elements.pop()) + float(elements.pop()) * 1j
-                end = float(elements.pop()) + float(elements.pop()) * 1j
+                # control1 = float(elements.pop()) + float(elements.pop()) * 1j
+                # control2 = float(elements.pop()) + float(elements.pop()) * 1j
+                control1 = Point(float(elements.pop()),float(elements.pop()))
+                control2 = Point(float(elements.pop()),float(elements.pop()))
+                # end = float(elements.pop()) + float(elements.pop()) * 1j
+                end = Point(float(elements.pop()), float(elements.pop()))
 
                 if not absolute:
                     control1 += current_pos
                     control2 += current_pos
                     end += current_pos
-
                 segments.append(path.CubicBezier(self.scaler(current_pos), self.scaler(control1), self.scaler(control2), self.scaler(end)))
                 current_pos = end
 
@@ -300,8 +305,10 @@ class SVGElement(object):
                     # to the current point.
                     control1 = 2 * self.scaler(current_pos) - segments[-1].control2
 
-                control2 = float(elements.pop()) + float(elements.pop()) * 1j
-                end = float(elements.pop()) + float(elements.pop()) * 1j
+                # control2 = float(elements.pop()) + float(elements.pop()) * 1j
+                # end = float(elements.pop()) + float(elements.pop()) * 1j
+                control2 = Point(float(elements.pop()), float(elements.pop()))
+                end = Point(float(elements.pop()), float(elements.pop()))
 
                 if not absolute:
                     control2 += current_pos
@@ -311,8 +318,10 @@ class SVGElement(object):
                 current_pos = end
 
             elif command == 'Q':
-                control = float(elements.pop()) + float(elements.pop()) * 1j
-                end = float(elements.pop()) + float(elements.pop()) * 1j
+                # control = float(elements.pop()) + float(elements.pop()) * 1j
+                # end = float(elements.pop()) + float(elements.pop()) * 1j
+                control = Point(float(elements.pop()), float(elements.pop()))
+                end = Point(float(elements.pop()), float(elements.pop()))
 
                 if not absolute:
                     control += current_pos
@@ -336,7 +345,8 @@ class SVGElement(object):
                     # to the current point.
                     control = 2 * self.scaler(current_pos) - segments[-1].control
 
-                end = float(elements.pop()) + float(elements.pop()) * 1j
+                # end = float(elements.pop()) + float(elements.pop()) * 1j
+                end = Point(float(elements.pop()), float(elements.pop()))
 
                 if not absolute:
                     end += current_pos
@@ -345,11 +355,13 @@ class SVGElement(object):
                 current_pos = end
 
             elif command == 'A':
-                radius = float(elements.pop()) + float(elements.pop()) * 1j
+                # radius = float(elements.pop()) + float(elements.pop()) * 1j
+                radius = Point(float(elements.pop()), float(elements.pop()))
                 rotation = float(elements.pop())
                 arc = float(elements.pop())
                 sweep = float(elements.pop())
-                end = float(elements.pop()) + float(elements.pop()) * 1j
+                # end = float(elements.pop()) + float(elements.pop()) * 1j
+                end = Point(float(elements.pop()), float(elements.pop()))
 
                 if not absolute:
                     end += current_pos
@@ -381,7 +393,7 @@ class SVGElement(object):
             rect += "a %.9f %.9f 0 0 1 %.9f %.9f " % (rx, ry, -rx, -ry)
             rect += "v %.9f " % -(h - 2 * ry)
             rect += "a %.9f %.9f 0 0 1 %.9f %.9f Z" % (rx, ry, rx, -ry)
-        return self.parse_path(rect, matrix=matrix)
+        return self.parse_path(rect)
 
     def getFloatAttribute(self, attribute,default=0.):
         try:

@@ -84,7 +84,7 @@ class Plotter(object):
             # stroke = True
             for line in path.linearApproximation(error=tolerance):  # 返回一个Path对象，里面是经过直线化和共线合并处理的Line对象
                 if stroke:
-                    data.append([(line.start.real, line.start.imag), (line.end.real, line.end.imag)])
+                    data.append([(line.start.x, line.start.y), (line.end.x, line.end.y)])
                 lines.append((line.start, line.end))  # lines又存储成了线段的端点组
             # lines 多边形的线段 [4, 2, 2]
             angleDegrees = 45
@@ -191,10 +191,14 @@ class Plotter(object):
         viewBox[2] += viewBox[0] # x轴
         viewBox[3] += viewBox[1] # y轴
 
-        matrix = [width / viewBoxWidth, 0, -viewBox[0] * width / viewBoxWidth,
-                  0, height / viewBoxHeight, viewBox[3] * height / viewBoxHeight]
-        matrix[0] = 2
-        matrix[4] = -2
+        # matrix = [width / viewBoxWidth, 0, -viewBox[0] * width / viewBoxWidth,
+        #           0, height / viewBoxHeight, viewBox[3] * height / viewBoxHeight]
+
+        matrix = [[width / viewBoxWidth, 0],
+                  [0, height / viewBoxHeight]]
+
+        # matrix[0] = 2
+        # matrix[4] = -2
         # 递归遍历所有图层，获取path
         # self.getPaths(matrix, svg)
         return SVGElement(svg, matrix)
