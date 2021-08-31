@@ -182,7 +182,8 @@ class SVGElement(object):
             # matrix[1] = 0  matrix[3] = 0
             # matrix[0] = 画布宽与视窗宽比  matrix[4]= 画布高与视窗高度比的负数
             # matrix[5] =
-            return p.transform(self.matrix)
+            p.transform(self.matrix)
+            return p
             return complex(p.real * self.matrix[0] + self.matrix[2], p.imag * self.matrix[4])
             # 有可能是因为svg的y轴与cnc画图y轴是相反的，需要需要这么操作，不然图像可能会翻转
             return complex(p.real * self.matrix[0] + p.imag * self.matrix[1] + self.matrix[2],
@@ -287,7 +288,8 @@ class SVGElement(object):
                     control1 += current_pos
                     control2 += current_pos
                     end += current_pos
-                segments.append(path.CubicBezier(self.scaler(current_pos), self.scaler(control1), self.scaler(control2), self.scaler(end)))
+                segments.append(path.CubicBezier(self.scaler(current_pos), self.scaler(control1), self.scaler(control2),
+                                 self.scaler(end)))
                 current_pos = end
 
             elif command == 'S':

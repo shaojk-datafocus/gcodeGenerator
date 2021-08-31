@@ -76,12 +76,12 @@ class Plotter(object):
     def parseSVG(self, svg, tolerance=0.05, shader=None, strokeAll=False, extractColor=None):
         data = []
         for path in self.getPathsFromSVG(svg):
-            print(path)
             lines = []
 
             stroke = strokeAll or (path.svgState.stroke is not None and (
                         extractColor is None or isSameColor(path.svgState.stroke, extractColor)))
             # stroke = True
+            print(path)
             for line in path.linearApproximation(error=tolerance):  # 返回一个Path对象，里面是经过直线化和共线合并处理的Line对象
                 if stroke:
                     data.append([(line.start.x, line.start.y), (line.end.x, line.end.y)])
@@ -92,14 +92,17 @@ class Plotter(object):
             deltaY = spacing / 2
             # 使用旋转变换，变换各点的坐标
             # 构造变换矩阵
-            rotate = complex(math.cos(angleDegrees * math.pi / 180.), math.sin(angleDegrees * math.pi / 180.))
+            # rotate = complex(math.cos(angleDegrees * math.pi / 180.), math.sin(angleDegrees * math.pi / 180.))
             cos = math.cos(angleDegrees * math.pi / 180)
             sin = math.sin(angleDegrees * math.pi / 180)
+            rotate_matrix = [[cos, sin], [-sin, cos]]
             rotate_inverse_matrix = [[cos, -sin], [sin, cos]] # 逆时针旋转
-            polygon = [(line[0] / rotate, line[1] / rotate) for line in lines]  # 所有的点逆时针旋转45度
+            # polygon = [(line[0] / rotate, line[1] / rotate) for line in lines]  # 所有的点逆时针旋转45度
+            polygon = [(line[0].transform(rotate_matrix), line[1].transform(rotate_matrix)) for line in lines]
+
             # 获取图形Y轴的范围
-            minY = min(min(line[0].imag, line[1].imag) for line in polygon)
-            maxY = max(max(line[0].imag, line[1].imag) for line in polygon)
+            minY = min(min(line[0].y, line[1].y) for line in polygon)
+            maxY = max(max(line[0].y, line[1].y) for line in polygon)
 
             # 遍历整个y轴范围
             hatchlines = []
@@ -111,20 +114,20 @@ class Plotter(object):
                 for line in polygon:
                     start = line[0]
                     end = line[1]
-                    if end.imag == y or start.imag == y:
+                    if end.y == y or start.y == y:
                         # 如果hatchline正好经过多边形的端点，那就忽略
                         break
                     # y已知，计算出x，得到交点坐标
-                    if end.imag < y < start.imag or start.imag < y < end.imag:  # 如果当前填充线y在线段之间
-                        if end.real == start.real:  # 如果该线段是竖直的, 在当前线段上放一个点，并记录点在线段起始点的上方还是下方
+                    if end.y < y < start.y or start.y < y < end.y:  # 如果当前填充线y在线段之间
+                        if end.x == start.x:  # 如果该线段是竖直的, 在当前线段上放一个点，并记录点在线段起始点的上方还是下方
                             # intersections.append((complex(start.real, y), start.imag < y, line))  # ∵tant90° 不存在
-                            intersections.append(Point(start.real,y))
+                            intersections.append(Point(start.x,y))
                         else:  # 如果线段不是竖直的
-                            k = (end.imag - start.imag) / (end.real - start.real) # 计算边的斜率
+                            k = (end.y - start.y) / (end.x - start.x) # 计算边的斜率
                             # k * (x - z.real) = y - z.imag
                             # so: x = (y - z.imag) / k + z.real
                             # 求线段上的一个点[x, y](y已知)，使点在线段内
-                            intersections.append(Point((y-start.imag)/k+start.real,y))
+                            intersections.append(Point((y-start.y)/k+start.x,y))
                     # hatchline排序、去重
                     intersections.sort(key=lambda p: p.x)
                 maxBatch = max(maxBatch, len(intersections)/2)

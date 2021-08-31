@@ -15,9 +15,12 @@ def segment_length(curve, start, end, start_point, end_point, error, min_depth, 
     """Recursively approximates the length by straight lines"""
     mid = (start + end) / 2
     mid_point = curve.point(mid)
-    length = abs(end_point - start_point)
-    first_half = abs(mid_point - start_point)
-    second_half = abs(end_point - mid_point)
+    # length = abs(end_point - start_point)
+    # first_half = abs(mid_point - start_point)
+    # second_half = abs(end_point - mid_point)
+    length = (end_point - start_point).length
+    first_half = (mid_point - start_point).length
+    second_half = (end_point - mid_point).length
 
     length2 = first_half + second_half
     if (length2 - length > error) or (depth < min_depth):
@@ -34,7 +37,7 @@ def approximate(path, start, end, start_point, end_point, max_error, depth, max_
     if depth >= max_depth:
         return [start_point, end_point]
     actual_length = path.measure(start, end, error=max_error/4)
-    linear_length = abs(end_point - start_point)
+    linear_length = (end_point - start_point).length
     # Worst case deviation given a fixed linear_length and actual_length would probably be
     # a symmetric tent shape (I haven't proved it -- TODO).
     deviationSquared = (actual_length/2)**2 - (linear_length/2)**2 # 这里应该是个微分概念
@@ -125,6 +128,8 @@ class CubicBezier(Segment):
             return self.start
         elif pos == 1.:
             return self.end
+        # 这里应该使用的是三阶贝塞尔曲线
+        # B(t) = P0·(1-t)^3 + 3P1·(1-t)^2 + 3P2·t^2 + P3·t^3  t∈[0,1]
         return ((1 - pos) ** 3 * self.start) + \
                (3 * (1 - pos) ** 2 * pos * self.control1) + \
                (3 * (1 - pos) * pos ** 2 * self.control2) + \
@@ -504,7 +509,12 @@ class Path(MutableSequence):
         subpaths = []
         subpath = []
         prevEnd = None
+        print(self._segments[1].start)
+        print(self._segments[1].control1)
+        print(self._segments[1].control2)
+        print(self._segments[1].end)
         for i,segment in enumerate(self._segments):
+            print(segment)
             if prevEnd is None or segment.start == prevEnd:
                 if i == keepSegmentIndex:
                     keepSubpathIndex = len(subpaths)
@@ -518,7 +528,6 @@ class Path(MutableSequence):
             subpaths.append(subpath)
         # subpaths 包含了多条被直线分解的路径点，实际就一条路径
         linearPath = Path(svgState=self.svgState)
-
         for i,subpath in enumerate(subpaths):
             keep = set((keepPointIndex,)) if i == keepSubpathIndex else set()
             # keep = {0}
@@ -615,6 +624,7 @@ class Path(MutableSequence):
 
         return ' '.join(parts)
 
+
 class Point():
     def __init__(self, x, y):
         self.x = float(x)
@@ -628,15 +638,31 @@ class Point():
 
     def __add__(self, other):
         if hasattr(other,'x') and hasattr(other,'y'):
-            return Point(self.x + other.x, self.y + other.y)
+            self.x += other.x
+            self.y += other.y
         else:
-            return Point(self.x + other[0], self.y + other[1])
+            self.x += other[0]
+            self.y += other[1]
+        return self
 
     def __sub__(self, other):
         if hasattr(other,'x') and hasattr(other,'y'):
-            return Point(self.x - other.x, self.y - other.y)
+            self.x -= other.x
+            self.y -= other.y
         else:
-            return Point(self.x - other[0], self.y - other[1])
+            self.x -= other[0]
+            self.y -= other[1]
+        return Vector(self.x, self.y)
+
+    def __mul__(self, other):
+        self.x *= other
+        self.y *= other
+        return self
+
+    def __rmul__(self, other):
+        self.x *= other
+        self.y *= other
+        return self
 
     def transform(self, matrix):
         """矩阵变换"""
@@ -644,6 +670,14 @@ class Point():
         y = self.x * matrix[1][0] + self.y * matrix[1][1]
         self.x = x
         self.y = y
+
+class Vector(Point):
+    @property
+    def length(self):
+        return math.hypot(self.x, self.y)
+
+    def __abs__(self):
+        return self.length
 
 class Hatchline(object):
     def __init__(self, start, end):
