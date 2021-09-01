@@ -21,7 +21,7 @@ def segment_length(curve, start, end, start_point, end_point, error, min_depth, 
     length = (end_point - start_point).length
     first_half = (mid_point - start_point).length
     second_half = (end_point - mid_point).length
-
+    print(start_point, end_point)
     length2 = first_half + second_half
     if (length2 - length > error) or (depth < min_depth):
         # Calculate the length of each segment:
@@ -37,7 +37,6 @@ def approximate(path, start, end, start_point, end_point, max_error, depth, max_
     if depth >= max_depth:
         return [start_point, end_point]
     # path 的类型是CubicBezier
-    print(path)
     actual_length = path.measure(start, end, error=max_error/4)
     linear_length = (end_point - start_point).length
     # Worst case deviation given a fixed linear_length and actual_length would probably be
@@ -143,6 +142,7 @@ class CubicBezier(Segment):
         """Calculate the length of the path up to a certain position"""
         start_point = self.point(0)
         end_point = self.point(1)
+        print(type(start_point),type(end_point))
         return segment_length(self, 0, 1, start_point, end_point, error, min_depth, 0)
 
 class QuadraticBezier(Segment):
@@ -410,7 +410,6 @@ class Path(MutableSequence):
     ## TODO: check if error has decreased since last calculation
         if self._length is not None:
             return
-
         lengths = [each.length(error=error, min_depth=min_depth) for each in self._segments]
         self._length = sum(lengths)
         self._lengths = [each / (1 if self._length==0. else self._length) for each in lengths]
@@ -638,12 +637,9 @@ class Point():
 
     def __add__(self, other):
         if hasattr(other,'x') and hasattr(other,'y'):
-            self.x += other.x
-            self.y += other.y
+            return Point(self.x + other.x, self.y + other.y)
         else:
-            self.x += other[0]
-            self.y += other[1]
-        return self
+            return Point(self.x + other[0], self.y + other[1])
 
     def __sub__(self, other):
         if hasattr(other,'x') and hasattr(other,'y'):
