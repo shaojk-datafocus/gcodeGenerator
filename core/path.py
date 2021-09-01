@@ -36,6 +36,8 @@ def segment_length(curve, start, end, start_point, end_point, error, min_depth, 
 def approximate(path, start, end, start_point, end_point, max_error, depth, max_depth):
     if depth >= max_depth:
         return [start_point, end_point]
+    # path 的类型是CubicBezier
+    print(path)
     actual_length = path.measure(start, end, error=max_error/4)
     linear_length = (end_point - start_point).length
     # Worst case deviation given a fixed linear_length and actual_length would probably be
@@ -55,9 +57,11 @@ class Segment(object):
         self.end = end
 
     def measure(self, start, end, error=ERROR, min_depth=MIN_DEPTH):
+        # start, end 是0, 1的数
         return Path(self).measure(start, end, error=error, min_depth=min_depth)
 
     def getApproximatePoints(self, error=0.001, max_depth=32):
+        # self.point() 用于计算不同类型连段的上的点 返回Point类型
         points = approximate(self, 0., 1., self.point(0.), self.point(1.), error, 0, max_depth)
         return points
 
@@ -436,6 +440,7 @@ class Path(MutableSequence):
         return self._length
 
     def measure(self, start, end, error=ERROR, min_depth=MIN_DEPTH):
+        # start, end 是0, 1的数
         self._calc_lengths(error=error)
         if start == 0.0 and end == 1.0:
             return self.length()
@@ -509,12 +514,7 @@ class Path(MutableSequence):
         subpaths = []
         subpath = []
         prevEnd = None
-        print(self._segments[1].start)
-        print(self._segments[1].control1)
-        print(self._segments[1].control2)
-        print(self._segments[1].end)
         for i,segment in enumerate(self._segments):
-            print(segment)
             if prevEnd is None or segment.start == prevEnd:
                 if i == keepSegmentIndex:
                     keepSubpathIndex = len(subpaths)
@@ -523,7 +523,7 @@ class Path(MutableSequence):
                 subpaths.append(subpath)
                 subpath = []
             subpath += segment.getApproximatePoints(error=error/2., max_depth=max_depth) # 把曲线细分成一段一段的细小直线段
-            prevEnd = segment.end
+            prevEnd = segment.end.copy()
         if len(subpath) > 0:
             subpaths.append(subpath)
         # subpaths 包含了多条被直线分解的路径点，实际就一条路径
@@ -664,12 +664,18 @@ class Point():
         self.y *= other
         return self
 
+    def __eq__(self, other):
+        return self.x == other.x and self.y == other.y
+
     def transform(self, matrix):
         """矩阵变换"""
         x = self.x * matrix[0][0] + self.y * matrix[0][1]
         y = self.x * matrix[1][0] + self.y * matrix[1][1]
         self.x = x
         self.y = y
+
+    def copy(self):
+        return Point(self.x, self.y)
 
 class Vector(Point):
     @property

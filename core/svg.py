@@ -290,7 +290,7 @@ class SVGElement(object):
                     end += current_pos
                 segments.append(path.CubicBezier(self.scaler(current_pos), self.scaler(control1), self.scaler(control2),
                                  self.scaler(end)))
-                current_pos = end
+                current_pos = end.copy()
 
             elif command == 'S':
                 # Smooth curve. First control point is the "reflection" of
@@ -317,7 +317,7 @@ class SVGElement(object):
                     end += current_pos
 
                 segments.append(path.CubicBezier(self.scaler(current_pos), control1, self.scaler(control2), self.scaler(end)))
-                current_pos = end
+                current_pos = end.copy()
 
             elif command == 'Q':
                 # control = float(elements.pop()) + float(elements.pop()) * 1j
@@ -330,7 +330,7 @@ class SVGElement(object):
                     end += current_pos
 
                 segments.append(path.QuadraticBezier(self.scaler(current_pos), self.scaler(control), self.scaler(end)))
-                current_pos = end
+                current_pos = end.copy()
 
             elif command == 'T':
                 # Smooth curve. Control point is the "reflection" of
@@ -354,7 +354,7 @@ class SVGElement(object):
                     end += current_pos
 
                 segments.append(path.QuadraticBezier(self.scaler(current_pos), control, self.scaler(end)))
-                current_pos = end
+                current_pos = end.copy()
 
             elif command == 'A':
                 # radius = float(elements.pop()) + float(elements.pop()) * 1j
@@ -369,7 +369,7 @@ class SVGElement(object):
                     end += current_pos
 
                 segments.append(path.Arc(current_pos, radius, rotation, arc, sweep, end, self.scaler))
-                current_pos = end
+                current_pos = end.copy()
 
         return segments
     

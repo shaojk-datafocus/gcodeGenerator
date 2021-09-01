@@ -81,11 +81,11 @@ class Plotter(object):
             stroke = strokeAll or (path.svgState.stroke is not None and (
                         extractColor is None or isSameColor(path.svgState.stroke, extractColor)))
             # stroke = True
-            print(path)
             for line in path.linearApproximation(error=tolerance):  # 返回一个Path对象，里面是经过直线化和共线合并处理的Line对象
                 if stroke:
                     data.append([(line.start.x, line.start.y), (line.end.x, line.end.y)])
                 lines.append((line.start, line.end))  # lines又存储成了线段的端点组
+            print(lines)
             # lines 多边形的线段 [4, 2, 2]
             angleDegrees = 45
             spacing = 3
