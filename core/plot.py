@@ -76,7 +76,7 @@ class Plotter(object):
     def parseSVG(self, svg, tolerance=0.05, shader=None, strokeAll=False, extractColor=None):
         data = []
         for path in self.getPathsFromSVG(svg):
-            lines = []
+            polygon = []
 
             stroke = strokeAll or (path.svgState.stroke is not None and (
                         extractColor is None or isSameColor(path.svgState.stroke, extractColor)))
@@ -84,9 +84,9 @@ class Plotter(object):
             for line in path.linearApproximation(error=tolerance):  # 返回一个Path对象，里面是经过直线化和共线合并处理的Line对象
                 if stroke:
                     data.append([(line.start.x, line.start.y), (line.end.x, line.end.y)])
-                lines.append((line.start, line.end))  # lines又存储成了线段的端点组
-            print(lines)
-            # lines 多边形的线段 [4, 2, 2]
+                polygon.append((line.start, line.end))  # lines又存储成了线段的端点组
+            print(polygon)
+            # polygon 多边形的线段 [4, 2, 2]
             angleDegrees = 45
             spacing = 3
             deltaY = spacing / 2
@@ -98,7 +98,9 @@ class Plotter(object):
             rotate_matrix = [[cos, sin], [-sin, cos]]
             rotate_inverse_matrix = [[cos, -sin], [sin, cos]] # 逆时针旋转
             # polygon = [(line[0] / rotate, line[1] / rotate) for line in lines]  # 所有的点逆时针旋转45度
-            polygon = [(line[0].transform(rotate_matrix), line[1].transform(rotate_matrix)) for line in lines]
+            for line in polygon:
+                line[0].transform(rotate_matrix)
+                line[1].transform(rotate_matrix)
 
             # 获取图形Y轴的范围
             minY = min(min(line[0].y, line[1].y) for line in polygon)
@@ -172,11 +174,9 @@ class Plotter(object):
             # 将原多边行边框加入
             border = []
             for line in polygon:
-                p1 = Point(line[0].real, line[0].imag)
-                p2 = Point(line[1].real, line[1].imag)
-                p1.transform(rotate_inverse_matrix)
-                p2.transform(rotate_inverse_matrix)
-                border.append(Hatchline(p1,p2))
+                line[0].transform(rotate_inverse_matrix)
+                line[1].transform(rotate_inverse_matrix)
+                border.append(Hatchline(*line))
             hatchlinesBatchly.insert(0, border)
             data += hatchlinesBatchly
         return data

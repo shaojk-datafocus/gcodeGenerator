@@ -18,12 +18,14 @@ def segment_length(curve, start, end, start_point, end_point, error, min_depth, 
     # length = abs(end_point - start_point)
     # first_half = abs(mid_point - start_point)
     # second_half = abs(end_point - mid_point)
+    # print(type(start_point), type(mid_point), type(end_point))
     length = (end_point - start_point).length
     first_half = (mid_point - start_point).length
     second_half = (end_point - mid_point).length
-    print(start_point, end_point)
     length2 = first_half + second_half
-    if (length2 - length > error) or (depth < min_depth):
+    # print(length2, length, error, depth, min_depth)
+    # print(start, mid, end)
+    if ((length2 - length > error) or (depth < min_depth)):
         # Calculate the length of each segment:
         depth += 1
         return (segment_length(curve, start, mid, start_point, mid_point,
@@ -412,6 +414,7 @@ class Path(MutableSequence):
             return
         lengths = [each.length(error=error, min_depth=min_depth) for each in self._segments]
         self._length = sum(lengths)
+        print(self._length)
         self._lengths = [each / (1 if self._length==0. else self._length) for each in lengths]
 
     def point(self, pos, error=ERROR):
@@ -643,22 +646,15 @@ class Point():
 
     def __sub__(self, other):
         if hasattr(other,'x') and hasattr(other,'y'):
-            self.x -= other.x
-            self.y -= other.y
+            return Vector(self.x - other.x, self.y - other.y)
         else:
-            self.x -= other[0]
-            self.y -= other[1]
-        return Vector(self.x, self.y)
+            return Vector(self.x - other[1], self.y - other[1])
 
     def __mul__(self, other):
-        self.x *= other
-        self.y *= other
-        return self
+        return Point(self.x * other, self.y * other)
 
     def __rmul__(self, other):
-        self.x *= other
-        self.y *= other
-        return self
+        return Point(self.x * other, self.y * other)
 
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y
