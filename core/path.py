@@ -18,13 +18,10 @@ def segment_length(curve, start, end, start_point, end_point, error, min_depth, 
     # length = abs(end_point - start_point)
     # first_half = abs(mid_point - start_point)
     # second_half = abs(end_point - mid_point)
-    # print(type(start_point), type(mid_point), type(end_point))
     length = (end_point - start_point).length
     first_half = (mid_point - start_point).length
     second_half = (end_point - mid_point).length
     length2 = first_half + second_half
-    # print(length2, length, error, depth, min_depth)
-    # print(start, mid, end)
     if ((length2 - length > error) or (depth < min_depth)):
         # Calculate the length of each segment:
         depth += 1
@@ -84,7 +81,7 @@ class Line(Segment):
         return not self == other
 
     def getApproximatePoints(self, error=0.001, max_depth=32):
-        return [self.start, self.end]
+        return [self.start.copy(), self.end.copy()]
 
     def point(self, pos):
         if pos == 0.:
@@ -130,21 +127,20 @@ class CubicBezier(Segment):
     def point(self, pos):
         """Calculate the x,y position at a certain position of the path"""
         if pos == 0.:
-            return self.start
+            return self.start.copy()
         elif pos == 1.:
-            return self.end
+            return self.end.copy()
         # 这里应该使用的是三阶贝塞尔曲线
         # B(t) = P0·(1-t)^3 + 3P1·(1-t)^2 + 3P2·t^2 + P3·t^3  t∈[0,1]
         return ((1 - pos) ** 3 * self.start) + \
                (3 * (1 - pos) ** 2 * pos * self.control1) + \
                (3 * (1 - pos) * pos ** 2 * self.control2) + \
-               (pos ** 3 * self.end)
+               (pos ** 3 * self.end.copy())
 
     def length(self, error=ERROR, min_depth=MIN_DEPTH):
         """Calculate the length of the path up to a certain position"""
         start_point = self.point(0)
         end_point = self.point(1)
-        print(type(start_point),type(end_point))
         return segment_length(self, 0, 1, start_point, end_point, error, min_depth, 0)
 
 class QuadraticBezier(Segment):
@@ -414,7 +410,6 @@ class Path(MutableSequence):
             return
         lengths = [each.length(error=error, min_depth=min_depth) for each in self._segments]
         self._length = sum(lengths)
-        print(self._length)
         self._lengths = [each / (1 if self._length==0. else self._length) for each in lengths]
 
     def point(self, pos, error=ERROR):
@@ -540,7 +535,7 @@ class Path(MutableSequence):
             # 移除共线，计算各个线的偏差，把小于偏差的线段合成同一条线段
 
             for j in range(len(points)-1):
-                linearPath.append(Line(points[j], points[j+1])) #将路径点转换成Line对象
+                linearPath.append(Line(points[j].copy(), points[j+1].copy())) #将路径点转换成Line对象
         linearPath.closed = self.closed and linearPath._is_closable()
         linearPath.svgState = self.svgState
         self.subPath = linearPath
@@ -681,17 +676,17 @@ class Hatchline(object):
     def __init__(self, start, end):
         self.start  = start
         self.end    = end
-        self.updateVarible()
 
-    def updateVarible(self):
+    @property
+    def k(self):
         if self.end.x - self.start.x != 0:
-            self.k = (self.end.y - self.start.y) / (self.end.x - self.start.x)
-        else:
-            self.k = None
-        self.length = math.hypot(self.end.y - self.start.y, self.end.x - self.start.x)
+            return (self.end.y - self.start.y) / (self.end.x - self.start.x)
+
+    @property
+    def length(self):
+        return math.hypot(self.end.y - self.start.y, self.end.x - self.start.x)
 
     def reverse(self):
         p = self.start
         self.start = self.end
         self.end = p
-        self.k = None if self.k is None else -self.k

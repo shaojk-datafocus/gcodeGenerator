@@ -8,8 +8,80 @@ import math
 import re
 import sys
 
+from core.path import Point, Hatchline
 from core.plot import evaluate, Plotter, SCALE_NONE, Scale, SCALE_DOWN_ONLY, gcodeHeader
 
+
+class Gcoder():
+    def __init__(self, data, plotter=Plotter(), tolerance=0):
+        self.data = data
+        self.plotter = plotter
+        self.tolerance = tolerance
+        self.gcode = [
+            "G00 S1; endstops",
+            "G21; millimeters",
+            "G90; absolute",
+            "G28 X; home",
+            "G28 Y; home",
+            "G28 Z; home",
+        ]
+        self.reset()
+
+    def reset(self):
+        """初始化gcode参数"""
+        self.penState = "hover" # 设置三个状态hover, down, up
+        self.current = Point(0, 0) # 设置初始位置
+        self.time = 0
+
+    def stop(self, remark=""):
+        if self.penState != "hover":
+            self.gcode.append('G00 F%.1f Z%.3f; pen park: %s' % (self.plotter.zSpeed * 60., self.plotter.safeUpZ, remark))
+            self.penState = "hover"
+
+    def penUp(self, remark=""):
+        if self.penState == "down":
+            self.gcode.append('G00 F%.1f Z%.3f; pen up: %s' % (self.plotter.zSpeed * 60., self.plotter.penUpZ, remark))
+            self.penState = "up"
+
+    def penDown(self, remark=""):
+        if self.penState == "up":
+            self.gcode.append('G00 F%.1f Z%.3f; pen down: %s' % (self.plotter.zSpeed * 60., self.plotter.workZ, remark))
+        elif self.penState == "hover":
+            self.gcode.append('G00 F%.1f Z%.3f; pen down: %s' % (self.plotter.zSpeed * 60., self.plotter.penUpZ, remark))
+        else:
+            raise KeyError("未知的penState:",self.penState)
+        self.penState = "down"
+
+    def penMove(self, p, continuous=False, remark=""):
+        if self.penState == 'down' and not continuous:
+            self.penUp()
+        self.gcode.append('G00 F%.1f X%.3f Y%.3f; penMove: %s' % (self.plotter.moveSpeed * 60, p.x, p.y, remark))
+        self.time += (p-self.current).length / self.plotter.moveSpeed
+        self.current = p
+
+    def draw(self, line: Hatchline, remark=""):
+        if (self.current-line.start).length > self.tolerance:
+            self.penMove(line.start)
+        if self.penState != 'down':
+            self.penDown()
+        self.gcode.append('G01 F%.1f X%.3f Y%.3f; penDraw: %s' % (self.plotter.drawSpeed * 60, line.end.x, line.end.y, remark))
+        self.time += line.length / self.plotter.drawSpeed
+        self.current = line.end
+
+    def renderGcode(self):
+        # data: [Hatchline, Hatchline, Hatchline]
+        if len(self.data) == 0:
+            return None
+        # 检查每个点是否在画图范围内
+
+        # 归位到远点
+        self.penMove(Point(0,0), "position reset")
+
+        for line in self.data:
+            self.draw(line)
+
+        self.stop()
+        return self.gcode
 
 def emitGcode(data, plotter=Plotter(), scalingMode=SCALE_NONE, align=None, tolerance=0, gcodePause="@pause"):
     if len(data) == 0:

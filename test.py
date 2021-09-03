@@ -6,11 +6,3 @@ import numpy as np
 #
 # print(matrix.dot(p)+p)
 #
-
-start = 1
-stop = 2
-length = 10000
-x = np.linspace(start, stop, length)
-y = x**2
-result = sum(y*(stop-start)/length)
-print(result)

@@ -9,7 +9,7 @@ import sys
 import config
 import xml.etree.ElementTree as ET
 
-from core.gcode import emitGcode
+from core.gcode import emitGcode, Gcoder
 from core.plot import Plotter, Pen
 from core.parser import parseSVG, rgbFromColor
 from core.process import removePenBob, dedup
@@ -61,21 +61,22 @@ data = removePenBob(data) # 合并同起点终点的路径，为了连笔
 
 # data = dedup(data) # 去重
 
-print(len(data))
-with open("output.csv", "w") as f:
-    for hatchlines in data:
-        for hatchline in hatchlines:
-            f.write('%s, %s\n' % (hatchline.start, hatchline.end))
-        f.write('\n')
-exit(1)
-align = [0,0]
-scalingMode = 0 # SCALE_NONE
-gcodePause = '@pause'
-gcode = emitGcode(data, align=align, scalingMode=scalingMode, tolerance=config.general.tolerance,
-                plotter=plotter, gcodePause=gcodePause)
+# with open("output.csv", "w") as f:
+#     for hatchlines in data:
+#         for hatchline in hatchlines:
+#             f.write('%s, %s\n' % (hatchline.start, hatchline.end))
+#         f.write('\n')
 
-# for g in gcode:
-#     print(g)
+# 批次合并
+data_ = []
+for batch in data:
+    data_ += batch
+data = data_
+gcoder = Gcoder(data,plotter)
+gcode = gcoder.renderGcode()
+
+for g in gcode:
+    print(g)
 with open("output.gcode", "w") as f:
     for g in gcode:
         f.write(g+"\n")

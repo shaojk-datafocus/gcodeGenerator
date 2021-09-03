@@ -85,7 +85,6 @@ class Plotter(object):
                 if stroke:
                     data.append([(line.start.x, line.start.y), (line.end.x, line.end.y)])
                 polygon.append((line.start, line.end))  # lines又存储成了线段的端点组
-            print(polygon)
             # polygon 多边形的线段 [4, 2, 2]
             angleDegrees = 45
             spacing = 3
@@ -99,6 +98,8 @@ class Plotter(object):
             rotate_inverse_matrix = [[cos, -sin], [sin, cos]] # 逆时针旋转
             # polygon = [(line[0] / rotate, line[1] / rotate) for line in lines]  # 所有的点逆时针旋转45度
             for line in polygon:
+                line[0].transform([[1,0],[0,-1]])
+                line[1].transform([[1,0],[0,-1]])
                 line[0].transform(rotate_matrix)
                 line[1].transform(rotate_matrix)
 
@@ -173,7 +174,7 @@ class Plotter(object):
                 j += 1
             # 将原多边行边框加入
             border = []
-            for line in polygon:
+            for i,line in enumerate(polygon): # 注：上一个线段的末尾点 是下一个线段的起始点
                 line[0].transform(rotate_inverse_matrix)
                 line[1].transform(rotate_inverse_matrix)
                 border.append(Hatchline(*line))

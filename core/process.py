@@ -80,11 +80,11 @@ def removeCollinear(points, error, pointsToKeep=set()):
         while i < j:
             deviationSquared = (length(i, j) / 2) ** 2 - (abs(points[j] - points[i]) / 2) ** 2
             if deviationSquared <= error ** 2 and set(range(i + 1, j)).isdisjoint(pointsToKeep):
-                out.append(points[i])
+                out.append(points[i].copy())
                 i = j
                 break
             j -= 1
-        out.append(points[j])
+        out.append(points[j].copy())
         i += 1
 
     return out
